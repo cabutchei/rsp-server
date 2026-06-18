@@ -57,7 +57,8 @@ jobs:
           cache: maven
       - name: Build distribution
         run: |
-          mvn clean package -DskipTests -B
+          mvn -pl targetplatform -am install -DskipTests -B
+          mvn -pl distribution/distribution -am clean package -DskipTests -B
       - name: Compute release metadata
         id: meta
         run: |
@@ -80,7 +81,6 @@ jobs:
       - name: Write LATEST
         run: |
           mkdir -p dist
-          cp "distribution/distribution/target/${{ steps.meta.outputs.bundle_name }}" "dist/${{ steps.meta.outputs.bundle_name }}"
           cat > dist/LATEST <<EOF
           com.github.cabutchei.rsp.distribution.latest.version=${{ steps.meta.outputs.version }}
           com.github.cabutchei.rsp.distribution.latest.url=${{ steps.meta.outputs.release_url }}
@@ -90,7 +90,7 @@ jobs:
         with:
           name: rsp-wtp-server-release
           path: |
-            dist/${{ steps.meta.outputs.bundle_name }}
+            distribution/distribution/target/${{ steps.meta.outputs.bundle_name }}
             dist/LATEST
           if-no-files-found: error
 
