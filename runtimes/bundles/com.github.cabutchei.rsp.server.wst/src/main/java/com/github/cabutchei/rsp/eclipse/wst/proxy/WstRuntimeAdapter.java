@@ -2,6 +2,8 @@ package com.github.cabutchei.rsp.eclipse.wst.proxy;
 
 import java.util.Objects;
 
+import com.github.cabutchei.rsp.eclipse.core.runtime.IPath;
+import com.github.cabutchei.rsp.eclipse.core.runtime.Path;
 import com.github.cabutchei.rsp.server.spi.servertype.IRuntime;
 import com.github.cabutchei.rsp.server.spi.servertype.IRuntimeWorkingCopy;
 
@@ -20,6 +22,12 @@ public class WstRuntimeAdapter implements IRuntime {
 	@Override
 	public String getName() {
 		return wstRuntime.getName();
+	}
+
+	@Override
+	public IPath getLocation() {
+		org.eclipse.core.runtime.IPath location = wstRuntime.getLocation();
+		return location == null ? null : Path.fromOSString(location.toOSString());
 	}
 
 	@Override

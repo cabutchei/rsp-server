@@ -28,7 +28,9 @@ import com.github.cabutchei.rsp.launching.utils.LaunchingDebugProperties;
 import com.github.cabutchei.rsp.eclipse.wst.model.delegate.AbstractWstServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.CreateServerValidation;
 import com.github.cabutchei.rsp.server.spi.servertype.IModuleStateProvider;
+import com.github.cabutchei.rsp.server.spi.servertype.IRuntime;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
+import com.github.cabutchei.rsp.server.spi.servertype.IServerAttributes;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
 
@@ -125,7 +127,10 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractWstServerD
 			return null;
 		}
 		String result = template;
-		String home = server.getAttribute(DefaultServerAttributes.SERVER_HOME_DIR, (String) null);
+		String home = getRuntimeLocation(server);
+		if (home == null) {
+			home = server.getAttribute(DefaultServerAttributes.SERVER_HOME_DIR, (String) null);
+		}
 		if (home == null) {
 			home = server.getAttribute(DefaultServerAttributes.SERVER_HOME_FILE, (String) null);
 		}
@@ -192,6 +197,10 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractWstServerD
 	}
 
 	protected String getServerHome(IServer server) {
+		String runtimeHome = getRuntimeLocation(server);
+		if (runtimeHome != null) {
+			return runtimeHome;
+		}
 		String home = server.getAttribute(DefaultServerAttributes.SERVER_HOME_DIR, (String) null);
 		if (home != null) {
 			return home;
@@ -322,5 +331,16 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractWstServerD
 
 	private String emptyStringDefault(String s) {
 		return s == null || s.isEmpty() ? "" : s;
+	}
+
+	private String getRuntimeLocation(IServerAttributes server) {
+		if (server == null) {
+			return null;
+		}
+		IRuntime runtime = server.getRuntime();
+		if (runtime == null || runtime.getLocation() == null) {
+			return null;
+		}
+		return runtime.getLocation().toOSString();
 	}
 }

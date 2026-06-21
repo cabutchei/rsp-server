@@ -261,6 +261,10 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IWstServ
 		this.runtime = runtime;
 	}
 
+	public void setRuntimeId(String runtimeId) {
+		this.wstServerWorkingCopy.getAdapter(org.eclipse.wst.server.core.internal.ServerWorkingCopy.class).setRuntimeId(runtimeId);
+	}
+
 	@Override
 	public String asJson(IProgressMonitor monitor) throws CoreException {
 		throw new UnsupportedOperationException("asJson is not supported for server working copies");

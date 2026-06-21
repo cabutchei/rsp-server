@@ -137,4 +137,6 @@ public interface IServerAttributes extends IRspAdaptable {
 
 	default <T> Object loadAdapter(Class<T> adapter) { return null; };
 
+	public IRuntime getRuntime();
+
 }

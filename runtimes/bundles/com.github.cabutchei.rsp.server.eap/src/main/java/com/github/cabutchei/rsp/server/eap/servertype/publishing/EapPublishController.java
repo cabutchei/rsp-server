@@ -15,6 +15,7 @@ import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
 import com.github.cabutchei.rsp.api.dao.DeployableReference;
 import com.github.cabutchei.rsp.api.dao.DeployableState;
 import com.github.cabutchei.rsp.server.eap.servertype.IEapServerAttributes;
+import com.github.cabutchei.rsp.server.spi.servertype.IRuntime;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 
 public class EapPublishController {
@@ -68,7 +69,10 @@ public class EapPublishController {
 	}
 
 	private Path getDeploymentFolder() {
-		String home = server.getAttribute(IEapServerAttributes.SERVER_HOME, (String) null);
+		String home = getRuntimeLocation();
+		if (home == null || home.isEmpty()) {
+			home = server.getAttribute(IEapServerAttributes.SERVER_HOME, (String) null);
+		}
 		if (home == null || home.isEmpty()) {
 			LOG.warn("Cannot determine EAP server home directory for {}", server.getId());
 			return null;
@@ -168,5 +172,13 @@ public class EapPublishController {
 				LOG.warn("Cannot remove marker file {}", file.getAbsolutePath());
 			}
 		}
+	}
+
+	private String getRuntimeLocation() {
+		IRuntime runtime = server.getRuntime();
+		if (runtime == null || runtime.getLocation() == null) {
+			return null;
+		}
+		return runtime.getLocation().toOSString();
 	}
 }

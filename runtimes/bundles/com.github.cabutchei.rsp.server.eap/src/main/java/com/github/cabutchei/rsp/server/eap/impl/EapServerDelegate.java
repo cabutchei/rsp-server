@@ -5,6 +5,7 @@ import java.net.ServerSocket;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.github.cabutchei.rsp.api.DefaultServerAttributes;
 import com.github.cabutchei.rsp.api.dao.CommandLineDetails;
 import com.github.cabutchei.rsp.api.dao.DeployableReference;
 import com.github.cabutchei.rsp.api.dao.ServerState;
@@ -12,6 +13,7 @@ import com.github.cabutchei.rsp.api.dao.StartServerResponse;
 import com.github.cabutchei.rsp.api.dao.UpdateServerResponse;
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.Path;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
 import com.github.cabutchei.rsp.eclipse.jdt.JDTPlugin;
@@ -22,6 +24,7 @@ import com.github.cabutchei.rsp.server.eap.servertype.publishing.EapPublishContr
 import com.github.cabutchei.rsp.server.eap.servertype.IEapServerAttributes;
 import com.github.cabutchei.rsp.server.eap.adapter.IJBossRuntimeAdapter;
 import com.github.cabutchei.rsp.server.spi.servertype.IModuleStateProvider;
+import com.github.cabutchei.rsp.server.spi.servertype.IRuntime;
 import com.github.cabutchei.rsp.server.spi.servertype.IRuntimeWorkingCopy;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
@@ -78,10 +81,19 @@ public class EapServerDelegate extends AbstractWstServerDelegate implements ISer
 		String vmInstallLocation = workingCopy.getAttribute(IEapServerAttributes.VM_INSTALL_PATH,
 				IEapServerAttributes.VM_INSTALL_PATH_DEFAULT);
 		try {
-			IRuntimeWorkingCopy runtimeWc = getWstServerControl().getRuntime().createWorkingCopy();
+			IRuntime runtime = workingCopy.getRuntime();
+			if (runtime == null) {
+				throw new CoreException(new Status(IStatus.ERROR, "com.github.cabutchei.rsp.server.eap",
+						"Server runtime is null"));
+			}
+			IRuntimeWorkingCopy runtimeWc = runtime.isWorkingCopy() ? (IRuntimeWorkingCopy) runtime : runtime.createWorkingCopy();
 			if (runtimeWc == null) {
 				throw new CoreException(new Status(IStatus.ERROR, "com.github.cabutchei.rsp.server.eap",
 						"Server runtime is null"));
+			}
+			String runtimeLocation = workingCopy.getAttribute(DefaultServerAttributes.SERVER_HOME_DIR, (String) null);
+			if (runtimeLocation != null && !runtimeLocation.isBlank()) {
+				runtimeWc.setLocation(new Path(runtimeLocation));
 			}
 			IJBossRuntimeAdapter jbossRuntime = (IJBossRuntimeAdapter) runtimeWc.loadAdapter(IJBossRuntimeAdapter.class);
 			if (jbossRuntime == null) {

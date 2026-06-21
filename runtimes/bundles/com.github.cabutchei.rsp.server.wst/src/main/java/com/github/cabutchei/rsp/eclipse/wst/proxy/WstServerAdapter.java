@@ -13,10 +13,12 @@ import java.util.Set;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.wst.server.core.IModule;
 import org.eclipse.wst.server.core.ServerUtil;
+import com.github.cabutchei.rsp.api.DefaultServerAttributes;
 import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
 import com.github.cabutchei.rsp.api.dao.DeployableReference;
 import com.github.cabutchei.rsp.api.dao.DeployableState;
@@ -320,6 +322,13 @@ public class WstServerAdapter implements IWstServerControl {
 
 	@SuppressWarnings("unchecked")
 	private Object readAttribute(String key, String type, Object defaultVal) {
+		if (DefaultServerAttributes.SERVER_HOME_DIR.equals(key)
+				|| DefaultServerAttributes.SERVER_HOME_FILE.equals(key)) {
+			String runtimeLocation = getRuntimeLocation();
+			if (runtimeLocation != null) {
+				return runtimeLocation;
+			}
+		}
 		if (ServerManagementAPIConstants.ATTR_TYPE_INT.equals(type)) {
 			int def = defaultVal instanceof Integer ? ((Integer) defaultVal).intValue() : 0;
 			return Integer.valueOf(wstServer.getAttribute(key, def));
@@ -338,6 +347,13 @@ public class WstServerAdapter implements IWstServerControl {
 		}
 		String def = defaultVal instanceof String ? (String) defaultVal : null;
 		return wstServer.getAttribute(key, def);
+	}
+
+	private String getRuntimeLocation() {
+		if (runtime == null || runtime.getLocation() == null) {
+			return null;
+		}
+		return runtime.getLocation().toOSString();
 	}
 
 	private void saveAttributes(IMemento memento, Map<String, Object> map) {

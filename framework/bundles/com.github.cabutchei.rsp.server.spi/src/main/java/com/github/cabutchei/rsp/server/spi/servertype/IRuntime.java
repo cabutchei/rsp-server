@@ -1,5 +1,6 @@
 package com.github.cabutchei.rsp.server.spi.servertype;
 
+import com.github.cabutchei.rsp.eclipse.core.runtime.IPath;
 import com.github.cabutchei.rsp.server.spi.util.IRspAdaptable;
 
 /**
@@ -17,4 +18,6 @@ public interface IRuntime extends IRspAdaptable {
 	default <T> Object loadAdapter(Class<T> adapterType) {
 		return null;
 	}
+
+	IPath getLocation();
 }

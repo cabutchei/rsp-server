@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: com.github.cabutchei.rsp.server.wst
 Bundle-SymbolicName: com.github.cabutchei.rsp.server.wst
-Bundle-Activator: com.github.cabutchei.rsp.eclipse.wst.bootstrap.WstBootstrapActivator
+Bundle-Activator: com.github.cabutchei.rsp.eclipse.wst.core.WSTServerCore
 Automatic-Module-Name: com.github.cabutchei.rsp.server.wst
 Bundle-Version: 0.4.0.Final
 Bundle-RequiredExecutionEnvironment: JavaSE-11
