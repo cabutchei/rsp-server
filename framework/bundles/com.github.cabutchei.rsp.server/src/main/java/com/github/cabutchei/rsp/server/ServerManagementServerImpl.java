@@ -459,12 +459,26 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	}
 
 	private UpdateServerResponse updateServerSync(UpdateServerRequest req) {
-		UpdateServerResponse resp = managementModel.getServerModel().updateServer(req);
-		if (req == null) {
+		try {
+			UpdateServerResponse resp = managementModel.getServerModel().updateServer(req);
+			if (resp == null) {
+				resp = new UpdateServerResponse();
+				resp.getValidation().setStatus(errorStatus("Update server failed: server model returned null response"));
+				return resp;
+			}
+			if (req == null) {
+				return resp;
+			}
+			resp.setServerJson(getServerAsJsonSync(req.getHandle()));
+			return resp;
+		} catch (Throwable t) {
+			String serverId = req != null && req.getHandle() != null ? req.getHandle().getId() : "<unknown>";
+			LOG.error("Unexpected failure in updateServerSync for {}", serverId, t);
+			UpdateServerResponse resp = new UpdateServerResponse();
+			String message = t.getMessage() == null ? t.getClass().getName() : t.getMessage();
+			resp.getValidation().setStatus(errorStatus("Update server failed: " + message, t));
 			return resp;
 		}
-		resp.setServerJson(getServerAsJsonSync(req.getHandle()));
-		return resp;
 	}
 
 	@Override
