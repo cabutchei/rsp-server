@@ -88,6 +88,18 @@ public interface IProjectsManager extends IWTPServiceProvider {
 	List<ClasspathContainerMapping> listClasspathContainers();
 
 	/**
+	 * Register a listener for workspace classpath container changes.
+	 */
+	default void addClasspathContainersChangedListener(Runnable listener) {
+	}
+
+	/**
+	 * Remove a previously registered workspace classpath container change listener.
+	 */
+	default void removeClasspathContainersChangedListener(Runnable listener) {
+	}
+
+	/**
 	 * @return true if the workspace has been initialized
 	 */
 	boolean isInitialized();

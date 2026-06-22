@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
@@ -29,7 +30,12 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.IClasspathAttribute;
 import org.eclipse.jdt.core.IClasspathContainer;
 import org.eclipse.jdt.core.IClasspathEntry;
+import org.eclipse.jdt.core.ElementChangedEvent;
+import org.eclipse.jdt.core.IElementChangedListener;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IJavaElementDelta;
 import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.launching.IVMInstall;
@@ -53,6 +59,8 @@ public class ProjectsManager implements IProjectsManager {
 	private static final Logger LOG = LoggerFactory.getLogger(ProjectsManager.class);
 	private static final String BUNDLE_ID = "com.github.cabutchei.rsp.workspace.eclipse";
 	private static final String PROJECT_FILE = ".project";
+	private static final String WEB_APP_LIBRARIES_CONTAINER_ID = "org.eclipse.jst.j2ee.internal.web.container";
+	private static final String WTP_MODULE_CONTAINER_ID = "org.eclipse.jst.j2ee.internal.module.container";
 	private static final int FILE_CHANGE_CREATED = 1;
 	private static final int FILE_CHANGE_CHANGED = 2;
 	private static final int FILE_CHANGE_DELETED = 3;
@@ -71,7 +79,10 @@ public class ProjectsManager implements IProjectsManager {
 	private final IWTPService wtpService;
 	private final List<IProjectImporter> projectImporters;
 	private final List<String> watchPatterns;
+	private final List<Runnable> classpathContainerChangeListeners = new CopyOnWriteArrayList<>();
+	private final IElementChangedListener javaModelChangeListener = this::onJavaModelChanged;
 	private final Set<Path> workspaceRoots = new LinkedHashSet<>();
+	private volatile boolean javaModelListenerRegistered;
 	private boolean initialized;
 
 	public ProjectsManager(IWorkspaceService workspaceService, List<IProjectImporter> projectImporters) {
@@ -434,6 +445,26 @@ public class ProjectsManager implements IProjectsManager {
 	}
 
 	@Override
+	public void addClasspathContainersChangedListener(Runnable listener) {
+		if (listener == null) {
+			return;
+		}
+		classpathContainerChangeListeners.add(listener);
+		registerJavaModelChangeListener();
+	}
+
+	@Override
+	public void removeClasspathContainersChangedListener(Runnable listener) {
+		if (listener == null) {
+			return;
+		}
+		classpathContainerChangeListeners.remove(listener);
+		if (classpathContainerChangeListeners.isEmpty()) {
+			unregisterJavaModelChangeListener();
+		}
+	}
+
+	@Override
 	public boolean isInitialized() {
 		return initialized;
 	}
@@ -687,6 +718,135 @@ public class ProjectsManager implements IProjectsManager {
 		}
 		String jreContainerId = String.valueOf(JavaRuntime.JRE_CONTAINER);
 		return jreContainerId.equals(containerPath.segment(0));
+	}
+
+	private boolean isWtpContainer(IPath containerPath) {
+		if (containerPath == null || containerPath.segmentCount() < 1) {
+			return false;
+		}
+		String containerId = containerPath.segment(0);
+		return WEB_APP_LIBRARIES_CONTAINER_ID.equals(containerId) || WTP_MODULE_CONTAINER_ID.equals(containerId);
+	}
+
+	private void registerJavaModelChangeListener() {
+		if (javaModelListenerRegistered) {
+			return;
+		}
+		synchronized (classpathContainerChangeListeners) {
+			if (javaModelListenerRegistered) {
+				return;
+			}
+			JavaCore.addElementChangedListener(javaModelChangeListener, ElementChangedEvent.POST_CHANGE);
+			javaModelListenerRegistered = true;
+		}
+	}
+
+	private void unregisterJavaModelChangeListener() {
+		if (!javaModelListenerRegistered) {
+			return;
+		}
+		synchronized (classpathContainerChangeListeners) {
+			if (!javaModelListenerRegistered || !classpathContainerChangeListeners.isEmpty()) {
+				return;
+			}
+			JavaCore.removeElementChangedListener(javaModelChangeListener);
+			javaModelListenerRegistered = false;
+		}
+	}
+
+	private void onJavaModelChanged(ElementChangedEvent event) {
+		if (event == null || classpathContainerChangeListeners.isEmpty()) {
+			return;
+		}
+		if (!containsWtpClasspathContainerChange(event.getDelta())) {
+			return;
+		}
+		notifyClasspathContainerChangeListeners();
+	}
+
+	private boolean containsWtpClasspathContainerChange(IJavaElementDelta delta) {
+		if (delta == null) {
+			return false;
+		}
+		if (isWtpClasspathContainerChange(delta)) {
+			return true;
+		}
+		IJavaElementDelta[] affectedChildren = delta.getAffectedChildren();
+		if (affectedChildren == null) {
+			return false;
+		}
+		for (IJavaElementDelta child : affectedChildren) {
+			if (containsWtpClasspathContainerChange(child)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean isWtpClasspathContainerChange(IJavaElementDelta delta) {
+		IJavaElement element = delta.getElement();
+		int flags = delta.getFlags();
+		if (element instanceof IJavaProject) {
+			if ((flags & (IJavaElementDelta.F_CLASSPATH_CHANGED | IJavaElementDelta.F_RESOLVED_CLASSPATH_CHANGED)) == 0) {
+				return false;
+			}
+			return hasWtpClasspathContainer((IJavaProject) element);
+		}
+		if (!(element instanceof IPackageFragmentRoot)) {
+			return false;
+		}
+		if ((flags & (IJavaElementDelta.F_ADDED_TO_CLASSPATH
+				| IJavaElementDelta.F_REMOVED_FROM_CLASSPATH
+				| IJavaElementDelta.F_CLASSPATH_REORDER
+				| IJavaElementDelta.F_REORDER)) == 0) {
+			return false;
+		}
+		return isWtpPackageFragmentRoot((IPackageFragmentRoot) element);
+	}
+
+	private boolean hasWtpClasspathContainer(IJavaProject javaProject) {
+		if (javaProject == null || !javaProject.exists()) {
+			return false;
+		}
+		IClasspathEntry[] entries;
+		try {
+			entries = javaProject.getRawClasspath();
+		} catch (JavaModelException e) {
+			LOG.debug("Failed to inspect raw classpath for {}", javaProject.getElementName(), e);
+			return false;
+		}
+		if (entries == null) {
+			return false;
+		}
+		for (IClasspathEntry entry : entries) {
+			if (entry != null && entry.getEntryKind() == IClasspathEntry.CPE_CONTAINER && isWtpContainer(entry.getPath())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean isWtpPackageFragmentRoot(IPackageFragmentRoot packageFragmentRoot) {
+		if (packageFragmentRoot == null) {
+			return false;
+		}
+		try {
+			IClasspathEntry rawClasspathEntry = packageFragmentRoot.getRawClasspathEntry();
+			return rawClasspathEntry != null && isWtpContainer(rawClasspathEntry.getPath());
+		} catch (JavaModelException e) {
+			LOG.debug("Failed to inspect classpath root {}", packageFragmentRoot.getElementName(), e);
+			return false;
+		}
+	}
+
+	private void notifyClasspathContainerChangeListeners() {
+		for (Runnable listener : classpathContainerChangeListeners) {
+			try {
+				listener.run();
+			} catch (RuntimeException e) {
+				LOG.warn("Classpath container change listener failed", e);
+			}
+		}
 	}
 
 	private String extractJavadoc(IClasspathEntry entry) {

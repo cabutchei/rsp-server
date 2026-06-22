@@ -137,6 +137,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	private final RemoteEventManager remoteEventManager;
 	private final InitHandler initHandler;
 	private final WorkspaceEventsHandler workspaceEventsHandler;
+	private final Runnable classpathContainerChangeListener = this::notifyJdtlsClasspathContainersForConnectedClients;
 	private ServerManagementServerLauncher launcher;
 	
 	public ServerManagementServerImpl(ServerManagementServerLauncher launcher, 
@@ -147,6 +148,9 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		IProjectsManager projectsManager = getProjectsManager();
 		this.initHandler = new InitHandler(managementModel, projectsManager);
 		this.workspaceEventsHandler = new WorkspaceEventsHandler(projectsManager);
+		if (projectsManager != null) {
+			projectsManager.addClasspathContainersChangedListener(classpathContainerChangeListener);
+		}
 	}
 	
 	protected RemoteEventManager createRemoteEventManager() {
@@ -302,8 +306,14 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	}
 
 	private void shutdownSync() {
+		IProjectsManager projectsManager = getProjectsManager();
+		if (projectsManager != null) {
+			projectsManager.removeClasspathContainersChangedListener(classpathContainerChangeListener);
+		}
 		managementModel.dispose();
-		launcher.shutdown();
+		if (launcher != null) {
+			launcher.shutdown();
+		}
 	}
 	
 	@Override
@@ -1171,18 +1181,29 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	}
 
 	private void notifyJdtlsClasspathContainers() {
+		RSPWTPClient client = ClientThreadLocal.getActiveClient();
+		if (client == null) {
+			return;
+		}
+		notifyJdtlsClasspathContainers(Arrays.asList(client));
+	}
+
+	private void notifyJdtlsClasspathContainersForConnectedClients() {
+		notifyJdtlsClasspathContainers(getClients());
+	}
+
+	private void notifyJdtlsClasspathContainers(List<RSPWTPClient> targetClients) {
+		if (targetClients == null || targetClients.isEmpty()) {
+			return;
+		}
 		IProjectsManager projectsManager = getProjectsManager();
 		if (projectsManager == null) {
 			return;
 		}
 		List<com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerMapping> mappings = projectsManager
 				.listClasspathContainers();
-		if (mappings == null || mappings.isEmpty()) {
-			return;
-		}
-		RSPWTPClient client = ClientThreadLocal.getActiveClient();
-		if (client == null) {
-			return;
+		if (mappings == null) {
+			mappings = new ArrayList<>();
 		}
 		List<ClasspathContainerMapping> apiMappings = new ArrayList<>();
 		for (com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerMapping mapping : mappings) {
@@ -1192,9 +1213,6 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 			List<ClasspathContainerEntry> entries = new ArrayList<>();
 			List<com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerEntry> sourceEntries = mapping.getEntries();
 			if (sourceEntries != null) {
-				if (sourceEntries.size() == 0) {
-					continue;
-				}
 				for (com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerEntry entry : sourceEntries) {
 					if (entry == null) {
 						continue;
@@ -1215,10 +1233,17 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 					mapping.getDescription(),
 					entries));
 		}
-		if (apiMappings.isEmpty()) {
-			return;
+		ClasspathContainerMappings notification = new ClasspathContainerMappings(apiMappings);
+		for (RSPWTPClient client : targetClients) {
+			if (client == null) {
+				continue;
+			}
+			try {
+				client.jdtlsClasspathContainersDetected(notification);
+			} catch (RuntimeException e) {
+				LOG.warn("Failed to notify client about classpath container changes", e);
+			}
 		}
-		client.jdtlsClasspathContainersDetected(new ClasspathContainerMappings(apiMappings));
 	}
 
 	/*
