@@ -5,6 +5,7 @@ import java.util.Objects;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IPath;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Path;
 import com.github.cabutchei.rsp.server.spi.servertype.IRuntime;
+import com.github.cabutchei.rsp.server.spi.servertype.IRuntimeType;
 import com.github.cabutchei.rsp.server.spi.servertype.IRuntimeWorkingCopy;
 
 public class WstRuntimeAdapter implements IRuntime {
@@ -28,6 +29,14 @@ public class WstRuntimeAdapter implements IRuntime {
 	public IPath getLocation() {
 		org.eclipse.core.runtime.IPath location = wstRuntime.getLocation();
 		return location == null ? null : Path.fromOSString(location.toOSString());
+	}
+
+	@Override
+	public IRuntimeType getRuntimeType() {
+		org.eclipse.wst.server.core.IRuntimeType runtimeType = wstRuntime.getRuntimeType();
+		return runtimeType instanceof org.eclipse.wst.server.core.internal.RuntimeType
+				? new WstRuntimeTypeAdapter((org.eclipse.wst.server.core.internal.RuntimeType) runtimeType)
+				: null;
 	}
 
 	@Override

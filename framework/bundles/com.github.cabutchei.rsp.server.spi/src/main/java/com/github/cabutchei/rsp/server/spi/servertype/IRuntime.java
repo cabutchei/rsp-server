@@ -11,6 +11,8 @@ public interface IRuntime extends IRspAdaptable {
 
 	String getName();
 
+	IRuntimeType getRuntimeType();
+
 	IRuntimeWorkingCopy createWorkingCopy();
 
 	boolean isWorkingCopy();
