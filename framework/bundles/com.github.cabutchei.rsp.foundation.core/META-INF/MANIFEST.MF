@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: com.github.cabutchei.rsp.foundation.core
 Bundle-SymbolicName: com.github.cabutchei.rsp.foundation.core
-Bundle-Version: 0.5.0.Final
+Bundle-Version: 0.6.0.Final
 Bundle-Activator: com.github.cabutchei.rsp.foundation.core.FoundationCoreActivator
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Import-Package: com.github.cabutchei.rsp.api.dao,

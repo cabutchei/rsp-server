@@ -4,7 +4,7 @@ Bundle-Name: com.github.cabutchei.rsp.server.wst
 Bundle-SymbolicName: com.github.cabutchei.rsp.server.wst
 Bundle-Activator: com.github.cabutchei.rsp.eclipse.wst.core.WSTServerCore
 Automatic-Module-Name: com.github.cabutchei.rsp.server.wst
-Bundle-Version: 0.5.0.Final
+Bundle-Version: 0.6.0.Final
 Bundle-RequiredExecutionEnvironment: JavaSE-11
 Import-Package: com.github.cabutchei.rsp.api,
  com.github.cabutchei.rsp.api.dao,

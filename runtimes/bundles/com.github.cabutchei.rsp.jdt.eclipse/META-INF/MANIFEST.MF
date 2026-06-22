@@ -4,7 +4,7 @@ Bundle-Name: com.github.cabutchei.rsp.jdt.eclipse
 Bundle-SymbolicName: com.github.cabutchei.rsp.jdt.eclipse
 Bundle-Activator: com.github.cabutchei.rsp.eclipse.jdt.Activator
 Automatic-Module-Name: com.github.cabutchei.rsp.jdt.eclipse
-Bundle-Version: 0.5.0.Final
+Bundle-Version: 0.6.0.Final
 Bundle-RequiredExecutionEnvironment: JavaSE-11
 Import-Package: com.github.cabutchei.rsp.eclipse.core.runtime,
  com.github.cabutchei.rsp.eclipse.jdt.launching,
