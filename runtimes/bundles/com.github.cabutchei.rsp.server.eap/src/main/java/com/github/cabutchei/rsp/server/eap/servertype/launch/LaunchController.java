@@ -2,18 +2,25 @@ package com.github.cabutchei.rsp.server.eap.servertype.launch;
 
 
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
 import org.eclipse.debug.core.ILaunchManager;
 import org.eclipse.jdt.launching.IJavaLaunchConfigurationConstants;
+import org.eclipse.jdt.launching.IRuntimeClasspathEntry;
+import org.eclipse.jdt.launching.JavaRuntime;
+import org.eclipse.wst.server.core.IServer;
 import org.eclipse.wst.server.core.IServerAttributes;
 import org.jboss.tools.as.core.server.controllable.subsystems.internal.LocalJBossLaunchController;
 import org.jboss.ide.eclipse.as.wtp.core.debug.RemoteDebugUtils;
 import org.jboss.ide.eclipse.as.wtp.core.server.behavior.ControllableServerBehavior;
 import org.jboss.ide.eclipse.as.wtp.core.server.behavior.IControllableServerBehavior;
 import org.jboss.ide.eclipse.as.wtp.core.server.behavior.IServerShutdownController;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 /**
@@ -22,11 +29,13 @@ import org.jboss.ide.eclipse.as.wtp.core.server.behavior.IServerShutdownControll
 public class LaunchController extends LocalJBossLaunchController {
 
     private static final String DEBUG_PORT_KEY = "com.github.cabutchei.rsp.server.eap.debugPort";
+    private static final String JBOSS_MODULES_JAR = "jboss-modules.jar";
 
     @Override
     public void setupLaunchConfiguration(ILaunchConfigurationWorkingCopy workingCopy, IProgressMonitor monitor)
             throws CoreException {
         super.setupLaunchConfiguration(workingCopy, monitor);
+        cleanupStaleModulesClasspathEntries(workingCopy);
 
         int port = getDebugPort(getServer());
 
@@ -79,6 +88,58 @@ public class LaunchController extends LocalJBossLaunchController {
         out = out.replaceAll("(^|\\s)-Xnoagent(\\s|$)", " ");
         out = out.replaceAll("\\s+", " ").trim();
         return out;
+    }
+
+    /**
+     * fix bug where updating the runtime's location causes server start to hang. This happens when, for some reason, a new runtime gets created.
+     * Jboss' classpath logic updates the classpath property, so stale locations remain in the array. This means that the classpath may reference
+     * jboss-modules.jar in a possibly non-existing path (along with current one).
+     * @param workingCopy
+     * @throws CoreException
+     */
+    private void cleanupStaleModulesClasspathEntries(ILaunchConfigurationWorkingCopy workingCopy) throws CoreException {
+        List<String> classpath = workingCopy.getAttribute(IJavaLaunchConfigurationConstants.ATTR_CLASSPATH,
+                new ArrayList<>());
+        if (classpath.isEmpty()) {
+            return;
+        }
+
+        IServer server = getServer();
+        if (server == null || server.getRuntime() == null || server.getRuntime().getLocation() == null) {
+            return;
+        }
+
+        IPath currentModulesJar = server.getRuntime().getLocation().append(JBOSS_MODULES_JAR);
+        String currentModulesJarPath = currentModulesJar.toOSString();
+
+        List<String> cleaned = new ArrayList<>(classpath.size());
+        boolean currentModulesEntrySeen = false;
+        for (String entryMemento : classpath) {
+            String entryLocation = getRuntimeClasspathLocation(entryMemento);
+            if (entryLocation == null || !entryLocation.endsWith(JBOSS_MODULES_JAR)) {
+                if (!cleaned.contains(entryMemento)) {
+                    cleaned.add(entryMemento);
+                }
+                continue;
+            }
+            if (!currentModulesEntrySeen && currentModulesJarPath.equals(entryLocation)) {
+                cleaned.add(entryMemento);
+                currentModulesEntrySeen = true;
+            }
+        }
+
+        if (!cleaned.equals(classpath)) {
+            workingCopy.setAttribute(IJavaLaunchConfigurationConstants.ATTR_CLASSPATH, cleaned);
+        }
+    }
+
+    private String getRuntimeClasspathLocation(String entryMemento) {
+        try {
+            IRuntimeClasspathEntry entry = JavaRuntime.newRuntimeClasspathEntry(entryMemento);
+            return entry.getLocation();
+        } catch (CoreException e) {
+            return null;
+        }
     }
 
     @Override
