@@ -1,6 +1,9 @@
 package com.github.cabutchei.rsp.server.eap.servertype.launch;
 
 
+import java.io.File;
+import java.io.IOException;
+
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -110,22 +113,31 @@ public class LaunchController extends LocalJBossLaunchController {
         }
 
         IPath currentModulesJar = server.getRuntime().getLocation().append(JBOSS_MODULES_JAR);
-        String currentModulesJarPath = currentModulesJar.toOSString();
+        String currentModulesJarPath = normalizePath(currentModulesJar.toOSString());
 
         List<String> cleaned = new ArrayList<>(classpath.size());
         boolean currentModulesEntrySeen = false;
+        String firstModulesEntry = null;
         for (String entryMemento : classpath) {
-            String entryLocation = getRuntimeClasspathLocation(entryMemento);
+            String entryLocation = normalizePath(getRuntimeClasspathLocation(entryMemento));
             if (entryLocation == null || !entryLocation.endsWith(JBOSS_MODULES_JAR)) {
                 if (!cleaned.contains(entryMemento)) {
                     cleaned.add(entryMemento);
                 }
                 continue;
             }
-            if (!currentModulesEntrySeen && currentModulesJarPath.equals(entryLocation)) {
+            if (firstModulesEntry == null) {
+                firstModulesEntry = entryMemento;
+            }
+            if (!currentModulesEntrySeen && pathsEqual(currentModulesJarPath, entryLocation)) {
                 cleaned.add(entryMemento);
                 currentModulesEntrySeen = true;
             }
+        }
+
+        // Never strip every modules entry; keep one fallback if path normalization failed to match.
+        if (!currentModulesEntrySeen && firstModulesEntry != null && !cleaned.contains(firstModulesEntry)) {
+            cleaned.add(firstModulesEntry);
         }
 
         if (!cleaned.equals(classpath)) {
@@ -140,6 +152,24 @@ public class LaunchController extends LocalJBossLaunchController {
         } catch (CoreException e) {
             return null;
         }
+    }
+
+    private String normalizePath(String path) {
+        if (path == null || path.isBlank()) {
+            return null;
+        }
+        try {
+            return new File(path).getCanonicalPath();
+        } catch (IOException e) {
+            return new File(path).getAbsolutePath();
+        }
+    }
+
+    private boolean pathsEqual(String left, String right) {
+        if (left == null || right == null) {
+            return false;
+        }
+        return left.equals(right) || left.equalsIgnoreCase(right);
     }
 
     @Override
