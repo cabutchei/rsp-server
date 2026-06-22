@@ -47,7 +47,7 @@ public class WstRuntimeAdapter implements IRuntime {
 
 	@Override
 	public boolean isWorkingCopy() {
-		return this.wstRuntime.isWorkingCopy();
+		return this instanceof WstRuntimeWorkingCopyAdapter && this.wstRuntime.isWorkingCopy();
 	}
 
 	@Override
