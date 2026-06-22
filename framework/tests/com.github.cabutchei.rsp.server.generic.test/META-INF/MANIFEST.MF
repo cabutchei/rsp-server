@@ -3,7 +3,7 @@ Bundle-ManifestVersion: 2
 Bundle-Name: com.github.cabutchei.rsp.server.generic.test.generic.test
 Bundle-SymbolicName: com.github.cabutchei.rsp.server.generic.test.generic.test
 Automatic-Module-Name: com.github.cabutchei.rsp.server.generic.test.generic.test
-Bundle-Version: 0.6.0.Final
+Bundle-Version: 0.7.0.Final
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Import-Package: org.eclipse.lsp4j.jsonrpc,
  com.github.cabutchei.rsp.api,

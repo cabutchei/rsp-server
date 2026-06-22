@@ -3,7 +3,7 @@ Bundle-ManifestVersion: 2
 Bundle-Name: com.github.cabutchei.rsp.launching
 Bundle-SymbolicName: com.github.cabutchei.rsp.launching
 Automatic-Module-Name: com.github.cabutchei.rsp.launching
-Bundle-Version: 0.6.0.Final
+Bundle-Version: 0.7.0.Final
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-Activator: com.github.cabutchei.rsp.launching.internal.LaunchingActivator
 Bundle-ClassPath: .

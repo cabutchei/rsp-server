@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-SymbolicName: com.github.cabutchei.rsp.launching.test
 Automatic-Module-Name: com.github.cabutchei.rsp.launching.java.test
-Bundle-Version: 0.6.0.Final
+Bundle-Version: 0.7.0.Final
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ClassPath: .
 Require-Bundle: com.github.cabutchei.rsp.launching;bundle-version="0.0.9",
