@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import com.github.cabutchei.rsp.api.dao.DeployableReference;
 import com.github.cabutchei.rsp.api.dao.DeployableState;
@@ -27,6 +26,7 @@ import com.github.cabutchei.rsp.secure.model.ISecureStorageProvider;
 import com.github.cabutchei.rsp.server.core.internal.SecuredBase;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
 import com.github.cabutchei.rsp.server.spi.model.IServerModel;
+import com.github.cabutchei.rsp.server.spi.servertype.IRuntime;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerPublishModel;
@@ -243,5 +243,10 @@ public class Server extends SecuredBase implements IServer, IServerWorkingCopy {
 	@Override
 	public IServerWorkingCopy createWorkingCopy() {
 		return this;
+	}
+
+	@Override
+	public IRuntime getRuntime() {
+		throw new UnsupportedOperationException();
 	}
 }
