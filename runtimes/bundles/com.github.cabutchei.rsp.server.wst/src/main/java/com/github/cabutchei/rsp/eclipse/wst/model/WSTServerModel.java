@@ -47,6 +47,7 @@ import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
 import com.github.cabutchei.rsp.server.spi.model.IServerModel;
 import com.github.cabutchei.rsp.server.spi.model.IServerModelListener;
 import com.github.cabutchei.rsp.server.spi.servertype.CreateServerValidation;
+import com.github.cabutchei.rsp.server.spi.servertype.IRuntime;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerType;
@@ -669,98 +670,107 @@ public class WSTServerModel implements IServerModel {
 	@Override
 	public UpdateServerResponse updateServer(UpdateServerRequest req) {
 		UpdateServerResponse resp = new UpdateServerResponse();
-		if (req == null) {
-			resp.getValidation().setStatus(errorStatus("Update server request cannot be null"));
-			return resp;
-		}
-		ServerHandle sh = req.getHandle();
-		if( sh == null ) {
-			resp.getValidation().setStatus(errorStatus("Server handle cannot be null"));
-			return resp;
-		}
-		IServer server = managementModel.getServerModel().getServer(sh.getId());
-		if( server == null ) {
-			resp.getValidation().setStatus(errorStatus("Server " + sh.getId() + " not found in model"));
-			return resp;
-		}
-		if (req.getHandle().getType() == null) {
-			resp.getValidation().setStatus(errorStatus("Update server request's server type cannot be null"));
-			return resp;
-		}
-		
-		IServerWorkingCopy wc = server.createWorkingCopy();
-		String json = req.getServerJson();
 		try {
-			if( json == null ) {
-				throw new Exception("Error while reading server string: null");
+			if (req == null) {
+				resp.getValidation().setStatus(errorStatus("Update server request cannot be null"));
+				return resp;
 			}
-		} catch(Exception ce) {
-			resp.getValidation().setStatus(errorStatus("Update Failed: " + ce.getMessage(), ce));
-			return resp;
-		}
-		
-		IServerType type = serverTypes.get(req.getHandle().getType().getId());
-		if (type == null) {
-			resp.getValidation().setStatus(errorStatus("Update server request contains unknown server type"));
-			return resp;
-		}
-		if (!(wc instanceof WstServerWorkingCopyAdapter)) {
-			resp.getValidation().setStatus(errorStatus("Could not update server"));
-			return resp;
-		}
-		WSTBase base = new WSTBase();
-		try {
-			base.loadFromJson(json);
-		} catch (CoreException e) {
-			resp.getValidation().setStatus(errorStatus("Could not load from json"));
-			return resp;
-		}
-		String[] unchangeable = new String[] {
-			// Base.PROP_ID and Base.PROP_ID_SET are protected
-			WstServerAdapter.TYPE_ID, "id", "id-set"
-		};
-		for (int i = 0; i < unchangeable.length; i++) {
-			String key = unchangeable[i];
-			String dsValue = base.getAttribute(key, (String) null);
-			String current;
-			if (WstServerAdapter.TYPE_ID.equals(key)) {
-				current = server.getTypeId();
-			} else if ("id".equals(key)) {
-				current = server.getId();
-			} else {
-				current = server.getAttribute(key, (String) null);
+			ServerHandle sh = req.getHandle();
+			if( sh == null ) {
+				resp.getValidation().setStatus(errorStatus("Server handle cannot be null"));
+				return resp;
 			}
-			if (!isEqual(dsValue, current)) {
-				resp.getValidation().setStatus(errorStatus(
-					NLS.bind("Field {0} may not be changed", key)));
-					return resp;
+			IServer server = managementModel.getServerModel().getServer(sh.getId());
+			if( server == null ) {
+				resp.getValidation().setStatus(errorStatus("Server " + sh.getId() + " not found in model"));
+				return resp;
+			}
+			if (req.getHandle().getType() == null) {
+				resp.getValidation().setStatus(errorStatus("Update server request's server type cannot be null"));
+				return resp;
+			}
+			
+			IServerWorkingCopy wc = server.createWorkingCopy();
+			String json = req.getServerJson();
+			try {
+				if( json == null ) {
+					throw new Exception("Error while reading server string: null");
 				}
+			} catch(Exception ce) {
+				resp.getValidation().setStatus(errorStatus("Update Failed: " + ce.getMessage(), ce));
+				return resp;
 			}
-		IStatus validAttributes = validateAttributes(type, base.getMap(), false, true);
-		if( !validAttributes.isOK()) {
-			resp.getValidation().setStatus(StatusConverter.convert(validAttributes));
-			return resp;
-		}
 
-		applyDummyAttributes(wc, base.getMap(), type);
-		wc.getDelegate().updateServer(wc, resp);
-		wc.getDelegate().validate();
-		if( resp.getValidation().getStatus() != null && 
-		resp.getValidation().getStatus().getSeverity() == Status.ERROR) {
-			return resp;
-		}
-		try {
-			wc.saveAll(false);
-		} catch(CoreException ce) {
-			resp.getValidation().setStatus(StatusConverter.convert(ce.getStatus()));
-			return resp;
-		}
-		if( resp.getValidation().getStatus() == null ) {
-			resp.getValidation().setStatus(StatusConverter.convert(
-				com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS));
-		}
-		return resp;
+			IServerType type = serverTypes.get(req.getHandle().getType().getId());
+			if (type == null) {
+				resp.getValidation().setStatus(errorStatus("Update server request contains unknown server type"));
+				return resp;
+			}
+			if (!(wc instanceof WstServerWorkingCopyAdapter)) {
+				resp.getValidation().setStatus(errorStatus("Could not update server"));
+				return resp;
+			}
+			WSTBase base = new WSTBase();
+			try {
+				base.loadFromJson(json);
+			} catch (CoreException e) {
+				resp.getValidation().setStatus(errorStatus("Could not load from json"));
+				return resp;
+			}
+			String[] unchangeable = new String[] {
+				// Base.PROP_ID and Base.PROP_ID_SET are protected
+				WstServerAdapter.TYPE_ID, "id", "id-set"
+			};
+			for (int i = 0; i < unchangeable.length; i++) {
+				String key = unchangeable[i];
+				String dsValue = base.getAttribute(key, (String) null);
+				String current;
+				if (WstServerAdapter.TYPE_ID.equals(key)) {
+					current = server.getTypeId();
+				} else if ("id".equals(key)) {
+					current = server.getId();
+				} else {
+					current = server.getAttribute(key, (String) null);
+				}
+				if (!isEqual(dsValue, current)) {
+					resp.getValidation().setStatus(errorStatus(
+						NLS.bind("Field {0} may not be changed", key)));
+						return resp;
+					}
+				}
+			IStatus validAttributes = validateAttributes(type, base.getMap(), false, true);
+			if( !validAttributes.isOK()) {
+				resp.getValidation().setStatus(StatusConverter.convert(validAttributes));
+				return resp;
+			}
 
+			applyDummyAttributes(wc, base.getMap(), type);
+			wc.getDelegate().updateServer(wc, resp);
+			wc.getDelegate().validate();
+			if( resp.getValidation().getStatus() != null && 
+			resp.getValidation().getStatus().getSeverity() == Status.ERROR) {
+				return resp;
+			}
+			try {
+				LOG.debug("Saving updated server {} with runtime {}", wc.getId(), describeRuntime(wc.getRuntime()));
+				wc.saveAll(false);
+				LOG.debug("Saved updated server {}. Model runtime is now {}", wc.getId(), describeRuntime(server.getRuntime()));
+			} catch(CoreException ce) {
+				resp.getValidation().setStatus(StatusConverter.convert(ce.getStatus()));
+				return resp;
+			}
+			if( resp.getValidation().getStatus() == null ) {
+				resp.getValidation().setStatus(StatusConverter.convert(
+					com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS));
+			}
+			return resp;
+		} catch (Throwable t) {
+			String serverId = req != null && req.getHandle() != null ? req.getHandle().getId() : "<unknown>";
+			LOG.error("Unexpected failure updating server {}", serverId, t);
+			String message = t.getMessage() == null ? t.getClass().getName() : t.getMessage();
+			resp.getValidation().setStatus(errorStatus("Update Failed: " + message, t));
+			return resp;
+		}
 	}
 
 	private void applyDummyAttributes(IServerWorkingCopy wc, Map<String, Object> values, IServerType type) {
@@ -803,6 +813,16 @@ public class WSTServerModel implements IServerModel {
 			}
 			wc.setAttribute(key, value == null ? null : String.valueOf(value));
 		}
+	}
+
+	private String describeRuntime(IRuntime runtime) {
+		if (runtime == null) {
+			return "<null>";
+		}
+		String typeId = runtime.getRuntimeType() == null ? "<null>" : runtime.getRuntimeType().getId();
+		return "id=" + runtime.getId() + ", name=" + runtime.getName() + ", workingCopy=" + runtime.isWorkingCopy()
+				+ ", type=" + typeId + ", location="
+				+ (runtime.getLocation() == null ? "<null>" : runtime.getLocation().toOSString());
 	}
 
 	private Map<String, String> collectAttributeTypes(IServerType type) {
