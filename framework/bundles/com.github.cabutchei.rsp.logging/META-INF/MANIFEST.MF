@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: com.github.cabutchei.rsp.logging 
 Bundle-SymbolicName: com.github.cabutchei.rsp.logging
-Bundle-Version: 0.4.0.Final
+Bundle-Version: 0.5.0.Final
 Bundle-Activator: com.github.cabutchei.rsp.logging.LoggingActivator
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Import-Package: ch.qos.logback.classic,

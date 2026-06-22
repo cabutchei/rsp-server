@@ -7,7 +7,7 @@
 	<parent>
 		<groupId>com.github.cabutchei.rsp.framework</groupId>
 	  	<artifactId>tests</artifactId>
-		<version>0.4.0.Final</version>
+		<version>0.5.0.Final</version>
 	</parent>
         <groupId>com.github.cabutchei.rsp.framework.tests</groupId>
 	<artifactId>com.github.cabutchei.rsp.secure.test</artifactId>

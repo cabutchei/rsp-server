@@ -4,7 +4,7 @@ Bundle-Name: com.github.cabutchei.rsp.server.spi
 Bundle-SymbolicName: com.github.cabutchei.rsp.server.spi
 Automatic-Module-Name: com.github.cabutchei.rsp.server.spi
 Bundle-Activator: com.github.cabutchei.rsp.server.spi.SPIActivator
-Bundle-Version: 0.4.0.Final
+Bundle-Version: 0.5.0.Final
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Import-Package: com.github.cabutchei.rsp.api,
  com.github.cabutchei.rsp.api.dao,

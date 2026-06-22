@@ -3,7 +3,7 @@ Bundle-ManifestVersion: 2
 Bundle-Name: com.github.cabutchei.rsp.server.spi.test
 Bundle-SymbolicName: com.github.cabutchei.rsp.server.spi.test
 Automatic-Module-Name: com.github.cabutchei.rsp.server.spi.test
-Bundle-Version: 0.4.0.Final
+Bundle-Version: 0.5.0.Final
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Import-Package: org.osgi.framework,
  org.osgi.service.log

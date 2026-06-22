@@ -4,7 +4,7 @@ Bundle-Name: RSP-WTP EAP Runtime
 Bundle-SymbolicName: com.github.cabutchei.rsp.server.eap;singleton:=true
 Bundle-Activator: com.github.cabutchei.rsp.server.eap.impl.Activator
 Automatic-Module-Name: com.github.cabutchei.rsp.server.eap
-Bundle-Version: 0.4.0.Final
+Bundle-Version: 0.5.0.Final
 Bundle-RequiredExecutionEnvironment: JavaSE-11
 Import-Package: com.github.cabutchei.rsp.api,
  com.github.cabutchei.rsp.api.dao,

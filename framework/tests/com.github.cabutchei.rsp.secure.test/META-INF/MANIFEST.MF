@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Secure Storage Test
 Bundle-SymbolicName: com.github.cabutchei.rsp.secure.test
-Bundle-Version: 0.4.0.Final
+Bundle-Version: 0.5.0.Final
 Bundle-Activator: com.github.cabutchei.rsp.secure.test.Activator
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Automatic-Module-Name: com.github.cabutchei.rsp.secure.test
