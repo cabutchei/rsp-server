@@ -117,6 +117,7 @@ import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
 import com.github.cabutchei.rsp.server.spi.workspace.IWTPService;
 import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceInitializationService;
 import com.github.cabutchei.rsp.server.workspace.InitHandler;
+import com.github.cabutchei.rsp.server.workspace.InitHandlerOptions;
 import com.github.cabutchei.rsp.server.workspace.WorkspaceFolderChangeHandler;
 import com.github.cabutchei.rsp.server.workspace.WorkspaceEventsHandler;
 
@@ -142,11 +143,16 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	
 	public ServerManagementServerImpl(ServerManagementServerLauncher launcher, 
 			IServerManagementModel managementModel) {
+		this(launcher, managementModel, InitHandlerOptions.externalSocketDefaults());
+	}
+
+	public ServerManagementServerImpl(ServerManagementServerLauncher launcher, 
+			IServerManagementModel managementModel, InitHandlerOptions initHandlerOptions) {
 		this.launcher = launcher;
 		this.managementModel = managementModel;
 		this.remoteEventManager = createRemoteEventManager();
 		IProjectsManager projectsManager = getProjectsManager();
-		this.initHandler = new InitHandler(managementModel, projectsManager);
+		this.initHandler = new InitHandler(managementModel, projectsManager, initHandlerOptions);
 		this.workspaceEventsHandler = new WorkspaceEventsHandler(projectsManager);
 		if (projectsManager != null) {
 			projectsManager.addClasspathContainersChangedListener(classpathContainerChangeListener);
@@ -289,6 +295,9 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 
 	@Override
 	public void disconnectClient() {
+		if (launcher == null) {
+			return;
+		}
 		final RSPWTPClient rspc = ClientThreadLocal.getActiveClient();
 		new Thread("Shutdown") {
 			@Override
@@ -306,14 +315,22 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	}
 
 	private void shutdownSync() {
+		disposeCore();
+		if (launcher != null) {
+			launcher.shutdown();
+		}
+	}
+
+	private void disposeCore() {
 		IProjectsManager projectsManager = getProjectsManager();
 		if (projectsManager != null) {
 			projectsManager.removeClasspathContainersChangedListener(classpathContainerChangeListener);
 		}
 		managementModel.dispose();
-		if (launcher != null) {
-			launcher.shutdown();
-		}
+	}
+
+	public void dispose() {
+		disposeCore();
 	}
 	
 	@Override

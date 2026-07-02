@@ -11,6 +11,7 @@ package com.github.cabutchei.rsp.server;
 import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
 import com.github.cabutchei.rsp.server.spi.model.DelayedExtensionManager;
 import com.github.cabutchei.rsp.server.spi.model.DelayedExtensionManager.IDelayedExtension;
+import com.github.cabutchei.rsp.server.workspace.InitHandlerOptions;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
@@ -26,7 +27,8 @@ public class ServerCoreActivator implements BundleActivator {
 
 	@FunctionalInterface
 	public interface ILauncherFactory {
-		ServerManagementServerLauncher createLauncher(String portString);
+		ServerManagementServerLauncher createLauncher(String portString, InitHandlerOptions initHandlerOptions,
+				boolean loadServersOnLaunch);
 	}
 
 	public static void setLauncherFactory(ILauncherFactory factory) {
@@ -41,7 +43,11 @@ public class ServerCoreActivator implements BundleActivator {
 	public void start(final BundleContext context) throws Exception {
 		this.context = context;
 		ShutdownExecutor.getExecutor().setHandler(() -> { performStop(); });
-		startServer();
+		if (RSPFlags.isServerAutostartEnabled()) {
+			startServer();
+		} else {
+			LOG.info("RSP bundle activated with auto-start disabled.");
+		}
 		LOG.debug(NLS.bind("{0} bundle started.", BUNDLE_ID));
 	}
 
@@ -53,15 +59,21 @@ public class ServerCoreActivator implements BundleActivator {
 		return RSPFlags.getServerPort();
 	}
 
+	public static ServerManagementServerLauncher createLauncher(String portString,
+			InitHandlerOptions initHandlerOptions, boolean loadServersOnLaunch) {
+		ILauncherFactory factory = launcherFactory;
+		return factory != null
+				? factory.createLauncher(portString, initHandlerOptions, loadServersOnLaunch)
+				: new ServerManagementServerLauncher(portString, initHandlerOptions, loadServersOnLaunch);
+	}
+
 	private ServerManagementServerLauncher resolveLauncher(int port) {
 		ServerManagementServerLauncher launcher = LauncherSingleton.getDefault().getLauncher();
 		if (launcher != null) {
 			return launcher;
 		}
-		ILauncherFactory factory = launcherFactory;
-		ServerManagementServerLauncher created = factory != null
-				? factory.createLauncher(String.valueOf(port))
-				: new ServerManagementServerLauncher(String.valueOf(port));
+		ServerManagementServerLauncher created = createLauncher(String.valueOf(port),
+				InitHandlerOptions.externalSocketDefaults(), true);
 		LauncherSingleton.getDefault().setLauncher(created);
 		return created;
 	}
@@ -84,7 +96,7 @@ public class ServerCoreActivator implements BundleActivator {
 		}
 		OsgiClassLoaderHolder.set(osgiContextClassLoader);
 		Thread serverThread = new Thread(() -> {
-				addDelayedExtensions();
+				addDelayedExtensionsToModel();
 				try {
 					launcher2.launch(port);
 				} catch (Exception e) {
@@ -97,7 +109,7 @@ public class ServerCoreActivator implements BundleActivator {
 		serverThread.start();
 	}
 
-	private void addDelayedExtensions() {
+	public static void addDelayedExtensionsToModel() {
 		IDelayedExtension[] addToModel = DelayedExtensionManager.getDefault().getDelayedExtensions();
 		for( int i = 0; i < addToModel.length; i++ ) {
 			addToModel[i].addExtensionsToModel();
