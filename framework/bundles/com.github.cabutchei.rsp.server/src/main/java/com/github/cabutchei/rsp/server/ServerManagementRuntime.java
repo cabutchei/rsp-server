@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
 
 /**
@@ -81,6 +83,7 @@ public class ServerManagementRuntime {
 		if (!shutdown.compareAndSet(false, true)) {
 			return;
 		}
+		clearIfActiveEmbeddedRuntime(this);
 		if (launcher != null) {
 			launcher.shutdown();
 			return;
@@ -110,7 +113,14 @@ public class ServerManagementRuntime {
 			ServerManagementServerLauncher launcher = ServerCoreActivator.createLauncher(launcherId,
 					resolvedOptions.getInitHandlerOptions(), resolvedOptions.isLoadServersOnBootstrap());
 			ServerCoreActivator.addDelayedExtensionsToModel();
-			launcher.launch(resolvedPort);
+			try {
+				launcher.launch(resolvedPort);
+			} catch (CoreException e) {
+				throw e;
+			} catch (Exception e) {
+				throw new CoreException(new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID,
+						"Failed to launch embedded RSP socket server.", e));
+			}
 			ServerManagementRuntime runtime = new ServerManagementRuntime(launcher.getModel(), launcher.serverImpl,
 					launcher, "localhost", launcher.getBoundPort());
 			activeEmbeddedRuntime = runtime;
@@ -128,6 +138,14 @@ public class ServerManagementRuntime {
 			activeEmbeddedRuntime = null;
 			if (runtime != null) {
 				runtime.shutdown();
+			}
+		}
+	}
+
+	private static void clearIfActiveEmbeddedRuntime(ServerManagementRuntime runtime) {
+		synchronized (EMBEDDED_LOCK) {
+			if (activeEmbeddedRuntime == runtime) {
+				activeEmbeddedRuntime = null;
 			}
 		}
 	}
