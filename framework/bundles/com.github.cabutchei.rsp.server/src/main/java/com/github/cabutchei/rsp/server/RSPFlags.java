@@ -19,10 +19,16 @@ public class RSPFlags {
 	public static final String SYSPROP_DATA_DEFAULT_LOCATION = DataLocationCore.DATA_LOCATION_LEGACY_DEFAULT;
 	public static final String LOG_LEVEL_FLAG = LoggingConstants.SYSPROP_LOG_LEVEL_FLAG;
 	public static final String SYSPROP_SERVER_PORT = "rsp.server.port";
+	public static final String SYSPROP_SERVER_AUTOSTART = "rsp.server.autostart";
 	public static final int DEFAULT_PORT = 27511;
 	
 	public static int getServerPort() {
 		return getIntSysprop(SYSPROP_SERVER_PORT, DEFAULT_PORT);
+	}
+
+	public static boolean isServerAutostartEnabled() {
+		String value = System.getProperty(SYSPROP_SERVER_AUTOSTART);
+		return value == null ? true : Boolean.parseBoolean(value);
 	}
 
 	public static int getIntSysprop(String key, int def) {

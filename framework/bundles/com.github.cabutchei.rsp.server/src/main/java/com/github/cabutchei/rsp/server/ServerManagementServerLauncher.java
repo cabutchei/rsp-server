@@ -19,26 +19,24 @@ import java.util.concurrent.Executors;
 
 import com.github.cabutchei.rsp.api.RSPWTPClient;
 import com.github.cabutchei.rsp.api.SocketLauncher;
-import com.github.cabutchei.rsp.server.model.ServerManagementModel;
 // import com.github.cabutchei.rsp.server.model.ServerPersistenceManager;
 import com.github.cabutchei.rsp.server.persistence.DataLocationCore;
 import com.github.cabutchei.rsp.server.spi.client.ClientThreadLocal;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModelFactory;
+import com.github.cabutchei.rsp.server.workspace.InitHandlerOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ServerManagementServerLauncher {
 	private static final Logger LOG = LoggerFactory.getLogger(ServerManagementServerLauncher.class);
 
-	private static volatile IServerManagementModelFactory modelFactory;
-
 	public static void setServerManagementModelFactory(IServerManagementModelFactory factory) {
-		modelFactory = factory;
+		ServerManagementModelFactoryRegistry.set(factory);
 	}
 
 	public static void clearServerManagementModelFactory() {
-		modelFactory = null;
+		ServerManagementModelFactoryRegistry.clear();
 	}
 
 	// private final ServerPersistenceManager persistenceEventManager;
@@ -66,12 +64,27 @@ public class ServerManagementServerLauncher {
 	}
 
 	protected ServerManagementServerImpl serverImpl;
+	protected ServerManagementRuntime runtime;
 	private ListenOnSocketRunnable socketRunnable;
 	private ServerSocket serverSocket;
+	private final InitHandlerOptions initHandlerOptions;
+	private final boolean loadServersOnLaunch;
+	private int boundPort;
 	protected String portString;
 	public ServerManagementServerLauncher(String portString) {
+		this(portString, InitHandlerOptions.externalSocketDefaults(), true);
+	}
+
+	public ServerManagementServerLauncher(String portString, InitHandlerOptions initHandlerOptions,
+			boolean loadServersOnLaunch) {
 		this.portString = portString;
+		this.initHandlerOptions = initHandlerOptions == null
+				? InitHandlerOptions.externalSocketDefaults()
+				: initHandlerOptions;
+		this.loadServersOnLaunch = loadServersOnLaunch;
+		this.boundPort = -1;
 		this.serverImpl = createImpl();
+		this.runtime = new ServerManagementRuntime(this.serverImpl.getModel(), this.serverImpl);
 		// this.persistenceEventManager = new ServerPersistenceManager(this);
 	}
 	
@@ -79,17 +92,13 @@ public class ServerManagementServerLauncher {
 		DataLocationCore dlc = new DataLocationCore(this.portString);
 		if( !dlc.isInUse()) {
 			// dlc.lock();
-			return new ServerManagementServerImpl(this, createServerManagementModel(dlc));
+			return new ServerManagementServerImpl(this, createServerManagementModel(dlc), initHandlerOptions);
 		}
 		throw new RuntimeException("Workspace is locked. Please verify workspace is not in use, or, remove the .lock file at " + dlc.getDataLocation().getAbsolutePath() + "/.lock");
 	}
 	
 	protected IServerManagementModel createServerManagementModel(DataLocationCore dataLocationCore) {
-		IServerManagementModelFactory factory = modelFactory;
-		if (factory != null) {
-			return factory.create(dataLocationCore);
-		}
-		return new ServerManagementModel(dataLocationCore);
+		return ServerManagementModelFactoryRegistry.create(dataLocationCore);
 	}
 
 	public IServerManagementModel getModel() {
@@ -106,7 +115,9 @@ public class ServerManagementServerLauncher {
 
 	public void launch(int port) throws Exception {
 		// persistenceEventManager.loadState();
-		this.getModel().getServerModel().loadServers();
+		if (loadServersOnLaunch) {
+			runtime.ensureServersLoaded();
+		}
 		startListening(port, serverImpl);
 	}
 	
@@ -117,10 +128,11 @@ public class ServerManagementServerLauncher {
 		}
 		ExecutorService threadPool = Executors.newCachedThreadPool();
 		serverSocket = new ServerSocket(port);
+		boundPort = serverSocket.getLocalPort();
 		// create the socket server
 		try {
 			socketRunnable = new ListenOnSocketRunnable(serverSocket, server);
-			System.out.println("The server management server is running on port " + port);
+			System.out.println("The server management server is running on port " + boundPort);
 			threadPool.submit(socketRunnable);
 		} catch(Throwable t) {
 			LOG.error(t.getMessage(), t);
@@ -239,13 +251,15 @@ public class ServerManagementServerLauncher {
 				serverSocket.close();
 		} catch(IOException ioe) {
 		}
-		try {
-			serverImpl.getModel().getDataStoreModel().unlock();
-		} catch(IOException ioe) {
-			
-		}
-		ServerManagementServerImpl.shutdownAsyncExecutor();
-		ShutdownExecutor.getExecutor().shutdown();
+		runtime.shutdown();
+	}
+
+	public int getBoundPort() {
+		return boundPort;
+	}
+
+	protected InitHandlerOptions getInitHandlerOptions() {
+		return initHandlerOptions;
 	}
 	
 

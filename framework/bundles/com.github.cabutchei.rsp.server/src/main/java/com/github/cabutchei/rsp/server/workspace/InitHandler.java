@@ -28,16 +28,20 @@ import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
 import com.github.cabutchei.rsp.server.spi.workspace.IWTPConfiguration;
 
 public class InitHandler {
-	private static final boolean DEFAULT_AUTO_BUILDING = false;
-	private static final boolean DEFAULT_AUTO_PUBLISHING = false;
-
 	private final IServerManagementModel managementModel;
 	private final IProjectsManager projectsManager;
+	private final InitHandlerOptions options;
 	private final AtomicBoolean serversLoaded = new AtomicBoolean(false);
 
 	public InitHandler(IServerManagementModel managementModel, IProjectsManager projectsManager) {
+		this(managementModel, projectsManager, InitHandlerOptions.externalSocketDefaults());
+	}
+
+	public InitHandler(IServerManagementModel managementModel, IProjectsManager projectsManager,
+			InitHandlerOptions options) {
 		this.managementModel = managementModel;
 		this.projectsManager = projectsManager;
+		this.options = options == null ? InitHandlerOptions.externalSocketDefaults() : options;
 	}
 
 	public InitializeResult initialize(InitializeParams params) {
@@ -63,19 +67,27 @@ public class InitHandler {
 	}
 
 	private IStatus configureAutoBuilding() {
-		return projectsManager.setAutoBuilding(DEFAULT_AUTO_BUILDING);
+		Boolean autoBuilding = options.getAutoBuilding();
+		if (autoBuilding == null) {
+			return com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS;
+		}
+		return projectsManager.setAutoBuilding(autoBuilding.booleanValue());
 	}
 
 	private IStatus configureAutoPublishing() {
+		Boolean autoPublishing = options.getAutoPublishing();
+		if (autoPublishing == null) {
+			return com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS;
+		}
 		IWTPConfiguration wtpConfiguration = projectsManager.getWTPService();
 		if (wtpConfiguration == null) {
 			return com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS;
 		}
-		IStatus globalStatus = wtpConfiguration.setGlobalAutoPublishing(DEFAULT_AUTO_PUBLISHING);
+		IStatus globalStatus = wtpConfiguration.setGlobalAutoPublishing(autoPublishing.booleanValue());
 		if (globalStatus != null && !globalStatus.isOK()) {
 			return globalStatus;
 		}
-		IStatus perServerStatus = wtpConfiguration.setAutoPublishingForAllServers(DEFAULT_AUTO_PUBLISHING);
+		IStatus perServerStatus = wtpConfiguration.setAutoPublishingForAllServers(autoPublishing.booleanValue());
 		if (perServerStatus != null && !perServerStatus.isOK()) {
 			return perServerStatus;
 		}

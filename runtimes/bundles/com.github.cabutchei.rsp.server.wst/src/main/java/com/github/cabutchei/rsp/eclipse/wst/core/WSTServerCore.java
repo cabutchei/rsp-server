@@ -112,7 +112,9 @@ public class WSTServerCore extends Plugin {
 		ServerCore.addRuntimeLifecycleListener(runtimeLifecycleListener);
 		ServerManagementServerLauncher.setServerManagementModelFactory(new WstServerManagementModelFactory(
 				SERVER_MANAGER, workspaceService, workspaceInitializationService));
-		ServerCoreActivator.setLauncherFactory(WstServerManagementServerLauncher::new);
+		ServerCoreActivator.setLauncherFactory(
+				(portString, initHandlerOptions, loadServersOnLaunch) -> new WstServerManagementServerLauncher(
+						portString, initHandlerOptions, loadServersOnLaunch));
 	}
 
 	@Override
