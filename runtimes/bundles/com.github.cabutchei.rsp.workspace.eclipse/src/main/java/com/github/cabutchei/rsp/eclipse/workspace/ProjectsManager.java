@@ -13,7 +13,6 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
@@ -27,32 +26,19 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.eclipse.jdt.core.IClasspathAttribute;
-import org.eclipse.jdt.core.IClasspathContainer;
 import org.eclipse.jdt.core.IClasspathEntry;
-import org.eclipse.jdt.core.ElementChangedEvent;
-import org.eclipse.jdt.core.IElementChangedListener;
-import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.core.IJavaElementDelta;
 import org.eclipse.jdt.core.IJavaProject;
-import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.launching.IVMInstall;
-import org.eclipse.jdt.launching.JavaRuntime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.MultiStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
-import com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerEntry;
-import com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerMapping;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectImporter;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
 import com.github.cabutchei.rsp.server.spi.workspace.IWTPService;
 import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceService;
-import com.github.cabutchei.rsp.server.spi.workspace.JreContainerMapping;
 import com.github.cabutchei.rsp.server.spi.workspace.WorkspaceProject;
 
 public class ProjectsManager implements IProjectsManager {
@@ -79,10 +65,7 @@ public class ProjectsManager implements IProjectsManager {
 	private final IWTPService wtpService;
 	private final List<IProjectImporter> projectImporters;
 	private final List<String> watchPatterns;
-	private final List<Runnable> classpathContainerChangeListeners = new CopyOnWriteArrayList<>();
-	private final IElementChangedListener javaModelChangeListener = this::onJavaModelChanged;
 	private final Set<Path> workspaceRoots = new LinkedHashSet<>();
-	private volatile boolean javaModelListenerRegistered;
 	private boolean initialized;
 
 	public ProjectsManager(IWorkspaceService workspaceService, List<IProjectImporter> projectImporters) {
@@ -261,74 +244,6 @@ public class ProjectsManager implements IProjectsManager {
 	}
 
 	@Override
-	public List<JreContainerMapping> listNonStandardJreContainers() {
-		List<WorkspaceProject> projects = listWorkspaceProjects();
-		if (projects.isEmpty()) {
-			return Collections.emptyList();
-		}
-		Collection<Path> roots = getWorkspaceRootsSnapshot();
-		List<JreContainerMapping> mappings = new ArrayList<>();
-		Set<String> seen = new HashSet<>();
-		for (WorkspaceProject projectInfo : projects) {
-			if (projectInfo == null || !projectInfo.isOpen()) {
-				continue;
-			}
-			IProject project = getProject(projectInfo.getName());
-			if (project == null || !project.exists() || !project.isOpen()) {
-				continue;
-			}
-			IPath location = project.getLocation();
-			Path projectPath = location == null ? null : location.toFile().toPath().toAbsolutePath().normalize();
-			if (!roots.isEmpty() && (projectPath == null || !isContainedInAny(projectPath, roots))) {
-				continue;
-			}
-			IJavaProject javaProject = JavaCore.create(project);
-			if (javaProject == null) {
-				continue;
-			}
-			IClasspathEntry[] entries;
-			try {
-				entries = javaProject.getRawClasspath();
-			} catch (JavaModelException e) {
-				continue;
-			}
-			if (entries == null) {
-				continue;
-			}
-			for (IClasspathEntry entry : entries) {
-				if (entry == null || entry.getEntryKind() != IClasspathEntry.CPE_CONTAINER) {
-					continue;
-				}
-				IPath containerPath = entry.getPath();
-				if (!isNonStandardJreContainer(containerPath)) {
-					continue;
-				}
-				IVMInstall vm = JavaRuntime.getVMInstall(containerPath);
-				if (vm == null || vm.getInstallLocation() == null) {
-					continue;
-				}
-				String projectUri = null;
-				URI locationUri = project.getLocationURI();
-				if (locationUri != null) {
-					projectUri = locationUri.toString();
-				}
-				Path javaHome = vm.getInstallLocation().toPath();
-				String key = (projectUri == null ? project.getName() : projectUri) + "|" + containerPath.toString();
-				if (!seen.add(key)) {
-					continue;
-				}
-				mappings.add(new JreContainerMapping(
-						project.getName(),
-						projectUri,
-						containerPath.toString(),
-						vm.getName(),
-						javaHome));
-			}
-		}
-		return mappings;
-	}
-
-	@Override
 	public List<String> getWatchPatterns() {
 		return Collections.unmodifiableList(new ArrayList<>(watchPatterns));
 	}
@@ -351,117 +266,6 @@ public class ProjectsManager implements IProjectsManager {
 			return refreshStatus;
 		}
 		return Status.OK_STATUS;
-	}
-
-	@Override
-	public List<ClasspathContainerMapping> listClasspathContainers() {
-		List<WorkspaceProject> projects = listWorkspaceProjects();
-		if (projects.isEmpty()) {
-			return Collections.emptyList();
-		}
-		Collection<Path> roots = getWorkspaceRootsSnapshot();
-		List<ClasspathContainerMapping> mappings = new ArrayList<>();
-		Set<String> seen = new HashSet<>();
-		for (WorkspaceProject projectInfo : projects) {
-			if (projectInfo == null || !projectInfo.isOpen()) {
-				continue;
-			}
-			IProject project = getProject(projectInfo.getName());
-			if (project == null || !project.exists() || !project.isOpen()) {
-				continue;
-			}
-			IPath location = project.getLocation();
-			Path projectPath = location == null ? null : location.toFile().toPath().toAbsolutePath().normalize();
-			if (!roots.isEmpty() && (projectPath == null || !isContainedInAny(projectPath, roots))) {
-				continue;
-			}
-			IJavaProject javaProject = JavaCore.create(project);
-			if (javaProject == null) {
-				continue;
-			}
-			IClasspathEntry[] rawEntries;
-			try {
-				rawEntries = javaProject.getRawClasspath();
-			} catch (JavaModelException e) {
-				continue;
-			}
-			if (rawEntries == null) {
-				continue;
-			}
-			for (IClasspathEntry rawEntry : rawEntries) {
-				if (rawEntry == null || rawEntry.getEntryKind() != IClasspathEntry.CPE_CONTAINER) {
-					continue;
-				}
-				IPath containerPath = rawEntry.getPath();
-				if (isJreContainer(containerPath)) {
-					continue;
-				}
-				IClasspathContainer container;
-				try {
-					container = JavaCore.getClasspathContainer(containerPath, javaProject);
-				} catch (JavaModelException e) {
-					continue;
-				}
-				if (container == null) {
-					continue;
-				}
-				String projectUri = null;
-				URI locationUri = project.getLocationURI();
-				if (locationUri != null) {
-					projectUri = locationUri.toString();
-				}
-				String key = (projectUri == null ? project.getName() : projectUri) + "|" + containerPath.toString();
-				if (!seen.add(key)) {
-					continue;
-				}
-				List<ClasspathContainerEntry> entryMappings = new ArrayList<>();
-				IClasspathEntry[] containerEntries = container.getClasspathEntries();
-				if (containerEntries != null) {
-					for (IClasspathEntry containerEntry : containerEntries) {
-						if (containerEntry == null) {
-							continue;
-						}
-						String entryPath = resolveEntryPath(containerEntry);
-						String sourcePath = resolveEntrySourcePath(containerEntry);
-						String javadoc = extractJavadoc(containerEntry);
-						entryMappings.add(new ClasspathContainerEntry(
-								containerEntry.getEntryKind(),
-								entryPath,
-								sourcePath,
-								stringValue(containerEntry.getSourceAttachmentRootPath()),
-								javadoc,
-								containerEntry.isExported()));
-					}
-				}
-				mappings.add(new ClasspathContainerMapping(
-						project.getName(),
-						projectUri,
-						containerPath.toString(),
-						container.getDescription(),
-						entryMappings));
-			}
-		}
-		return mappings;
-	}
-
-	@Override
-	public void addClasspathContainersChangedListener(Runnable listener) {
-		if (listener == null) {
-			return;
-		}
-		classpathContainerChangeListeners.add(listener);
-		registerJavaModelChangeListener();
-	}
-
-	@Override
-	public void removeClasspathContainersChangedListener(Runnable listener) {
-		if (listener == null) {
-			return;
-		}
-		classpathContainerChangeListeners.remove(listener);
-		if (classpathContainerChangeListeners.isEmpty()) {
-			unregisterJavaModelChangeListener();
-		}
 	}
 
 	@Override
@@ -695,198 +499,6 @@ public class ProjectsManager implements IProjectsManager {
 		} catch (CoreException ce) {
 			return errorStatus("Failed to refresh workspace resource for " + changedPath, ce);
 		}
-	}
-
-	private boolean isNonStandardJreContainer(IPath containerPath) {
-		if (containerPath == null || containerPath.segmentCount() < 1) {
-			return false;
-		}
-		String jreContainerId = String.valueOf(JavaRuntime.JRE_CONTAINER);
-		if (!jreContainerId.equals(containerPath.segment(0))) {
-			return false;
-		}
-		if (containerPath.segmentCount() < 2) {
-			return false;
-		}
-		String execEnv = JavaRuntime.getExecutionEnvironmentId(containerPath);
-		return execEnv == null || execEnv.trim().isEmpty();
-	}
-
-	private boolean isJreContainer(IPath containerPath) {
-		if (containerPath == null || containerPath.segmentCount() < 1) {
-			return false;
-		}
-		String jreContainerId = String.valueOf(JavaRuntime.JRE_CONTAINER);
-		return jreContainerId.equals(containerPath.segment(0));
-	}
-
-	private boolean isWtpContainer(IPath containerPath) {
-		if (containerPath == null || containerPath.segmentCount() < 1) {
-			return false;
-		}
-		String containerId = containerPath.segment(0);
-		return WEB_APP_LIBRARIES_CONTAINER_ID.equals(containerId) || WTP_MODULE_CONTAINER_ID.equals(containerId);
-	}
-
-	private void registerJavaModelChangeListener() {
-		if (javaModelListenerRegistered) {
-			return;
-		}
-		synchronized (classpathContainerChangeListeners) {
-			if (javaModelListenerRegistered) {
-				return;
-			}
-			JavaCore.addElementChangedListener(javaModelChangeListener, ElementChangedEvent.POST_CHANGE);
-			javaModelListenerRegistered = true;
-		}
-	}
-
-	private void unregisterJavaModelChangeListener() {
-		if (!javaModelListenerRegistered) {
-			return;
-		}
-		synchronized (classpathContainerChangeListeners) {
-			if (!javaModelListenerRegistered || !classpathContainerChangeListeners.isEmpty()) {
-				return;
-			}
-			JavaCore.removeElementChangedListener(javaModelChangeListener);
-			javaModelListenerRegistered = false;
-		}
-	}
-
-	private void onJavaModelChanged(ElementChangedEvent event) {
-		if (event == null || classpathContainerChangeListeners.isEmpty()) {
-			return;
-		}
-		if (!containsWtpClasspathContainerChange(event.getDelta())) {
-			return;
-		}
-		notifyClasspathContainerChangeListeners();
-	}
-
-	private boolean containsWtpClasspathContainerChange(IJavaElementDelta delta) {
-		if (delta == null) {
-			return false;
-		}
-		if (isWtpClasspathContainerChange(delta)) {
-			return true;
-		}
-		IJavaElementDelta[] affectedChildren = delta.getAffectedChildren();
-		if (affectedChildren == null) {
-			return false;
-		}
-		for (IJavaElementDelta child : affectedChildren) {
-			if (containsWtpClasspathContainerChange(child)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	private boolean isWtpClasspathContainerChange(IJavaElementDelta delta) {
-		IJavaElement element = delta.getElement();
-		int flags = delta.getFlags();
-		if (element instanceof IJavaProject) {
-			if ((flags & (IJavaElementDelta.F_CLASSPATH_CHANGED | IJavaElementDelta.F_RESOLVED_CLASSPATH_CHANGED)) == 0) {
-				return false;
-			}
-			return hasWtpClasspathContainer((IJavaProject) element);
-		}
-		if (!(element instanceof IPackageFragmentRoot)) {
-			return false;
-		}
-		if ((flags & (IJavaElementDelta.F_ADDED_TO_CLASSPATH
-				| IJavaElementDelta.F_REMOVED_FROM_CLASSPATH
-				| IJavaElementDelta.F_CLASSPATH_REORDER
-				| IJavaElementDelta.F_REORDER)) == 0) {
-			return false;
-		}
-		return isWtpPackageFragmentRoot((IPackageFragmentRoot) element);
-	}
-
-	private boolean hasWtpClasspathContainer(IJavaProject javaProject) {
-		if (javaProject == null || !javaProject.exists()) {
-			return false;
-		}
-		IClasspathEntry[] entries;
-		try {
-			entries = javaProject.getRawClasspath();
-		} catch (JavaModelException e) {
-			LOG.debug("Failed to inspect raw classpath for {}", javaProject.getElementName(), e);
-			return false;
-		}
-		if (entries == null) {
-			return false;
-		}
-		for (IClasspathEntry entry : entries) {
-			if (entry != null && entry.getEntryKind() == IClasspathEntry.CPE_CONTAINER && isWtpContainer(entry.getPath())) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	private boolean isWtpPackageFragmentRoot(IPackageFragmentRoot packageFragmentRoot) {
-		if (packageFragmentRoot == null) {
-			return false;
-		}
-		try {
-			IClasspathEntry rawClasspathEntry = packageFragmentRoot.getRawClasspathEntry();
-			return rawClasspathEntry != null && isWtpContainer(rawClasspathEntry.getPath());
-		} catch (JavaModelException e) {
-			LOG.debug("Failed to inspect classpath root {}", packageFragmentRoot.getElementName(), e);
-			return false;
-		}
-	}
-
-	private void notifyClasspathContainerChangeListeners() {
-		for (Runnable listener : classpathContainerChangeListeners) {
-			try {
-				listener.run();
-			} catch (RuntimeException e) {
-				LOG.warn("Classpath container change listener failed", e);
-			}
-		}
-	}
-
-	private String extractJavadoc(IClasspathEntry entry) {
-		IClasspathAttribute[] attrs = entry.getExtraAttributes();
-		if (attrs == null) {
-			return null;
-		}
-		for (IClasspathAttribute attr : attrs) {
-			if (attr != null && IClasspathAttribute.JAVADOC_LOCATION_ATTRIBUTE_NAME.equals(attr.getName())) {
-				String value = attr.getValue();
-				return value == null || value.isBlank() ? null : value;
-			}
-		}
-		return null;
-	}
-
-	private String stringValue(IPath path) {
-		return path == null ? null : path.toString();
-	}
-
-	private String resolveEntryPath(IClasspathEntry entry) {
-		return resolveEntryPath(entry, entry == null ? null : entry.getPath());
-	}
-
-	private String resolveEntrySourcePath(IClasspathEntry entry) {
-		return resolveEntryPath(entry, entry == null ? null : entry.getSourceAttachmentPath());
-	}
-
-	private String resolveEntryPath(IClasspathEntry entry, IPath path) {
-		if (path == null || entry == null) {
-			return null;
-		}
-		if (entry.getEntryKind() != IClasspathEntry.CPE_LIBRARY) {
-			return path.toString();
-		}
-		IResource resource = ResourcesPlugin.getWorkspace().getRoot().findMember(path);
-		if (resource != null && resource.getLocation() != null) {
-			return resource.getLocation().toString();
-		}
-		return path.toString();
 	}
 
 	private IStatus errorStatus(String message, Throwable t) {

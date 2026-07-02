@@ -56,5 +56,6 @@ Export-Package: com.github.cabutchei.rsp.server,
  com.github.cabutchei.rsp.server.model,
  com.github.cabutchei.rsp.server.model.internal;x-friends:="com.github.cabutchei.rsp.server.test",
  com.github.cabutchei.rsp.server.model.internal.publishing;x-friends:="com.github.cabutchei.rsp.server.test",
- com.github.cabutchei.rsp.server.persistence
+ com.github.cabutchei.rsp.server.persistence,
+ com.github.cabutchei.rsp.server.workspace
 Require-Bundle: com.github.cabutchei.rsp.api
