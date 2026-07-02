@@ -54,10 +54,6 @@ import com.github.cabutchei.rsp.api.dao.InitializeParams;
 import com.github.cabutchei.rsp.api.dao.InitializeResult;
 import com.github.cabutchei.rsp.api.dao.JobHandle;
 import com.github.cabutchei.rsp.api.dao.JobProgress;
-import com.github.cabutchei.rsp.api.dao.ClasspathContainerEntry;
-import com.github.cabutchei.rsp.api.dao.ClasspathContainerMapping;
-import com.github.cabutchei.rsp.api.dao.ClasspathContainerMappings;
-import com.github.cabutchei.rsp.api.dao.JreContainerMappings;
 import com.github.cabutchei.rsp.api.dao.LaunchAttributesRequest;
 import com.github.cabutchei.rsp.api.dao.LaunchParameters;
 import com.github.cabutchei.rsp.api.dao.ListDeployableResourcesResponse;
@@ -138,7 +134,6 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	private final RemoteEventManager remoteEventManager;
 	private final InitHandler initHandler;
 	private final WorkspaceEventsHandler workspaceEventsHandler;
-	private final Runnable classpathContainerChangeListener = this::notifyJdtlsClasspathContainersForConnectedClients;
 	private ServerManagementServerLauncher launcher;
 	
 	public ServerManagementServerImpl(ServerManagementServerLauncher launcher, 
@@ -154,9 +149,6 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		IProjectsManager projectsManager = getProjectsManager();
 		this.initHandler = new InitHandler(managementModel, projectsManager, initHandlerOptions);
 		this.workspaceEventsHandler = new WorkspaceEventsHandler(projectsManager);
-		if (projectsManager != null) {
-			projectsManager.addClasspathContainersChangedListener(classpathContainerChangeListener);
-		}
 	}
 	
 	protected RemoteEventManager createRemoteEventManager() {
@@ -322,10 +314,6 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	}
 
 	private void disposeCore() {
-		IProjectsManager projectsManager = getProjectsManager();
-		if (projectsManager != null) {
-			projectsManager.removeClasspathContainersChangedListener(classpathContainerChangeListener);
-		}
 		managementModel.dispose();
 	}
 
@@ -1125,142 +1113,18 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	}
 
 	private InitializeResult initializeSync(InitializeParams params) {
-		InitializeResult result = initHandler.initialize(params);
-		notifyJdtlsJreContainers();
-		notifyJdtlsClasspathContainers();
-		return result;
+		return initHandler.initialize(params);
 	}
 
 	@Override
 	public void didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParams params) {
 		WorkspaceFolderChangeHandler handler = new WorkspaceFolderChangeHandler(getProjectsManager());
 		handler.update(params);
-		notifyJdtlsJreContainers();
-		notifyJdtlsClasspathContainers();
 	}
 
 	@Override
 	public void didChangeWatchedFiles(DidChangeWatchedFilesParams params) {
 		workspaceEventsHandler.didChangeWatchedFiles(params);
-		if (containsClasspathChange(params)) {
-			notifyJdtlsJreContainers();
-			notifyJdtlsClasspathContainers();
-		}
-	}
-
-	private boolean containsClasspathChange(DidChangeWatchedFilesParams params) {
-		if (params == null || params.getChanges() == null) {
-			return false;
-		}
-		for (com.github.cabutchei.rsp.api.dao.FileEvent event : params.getChanges()) {
-			if (event == null) {
-				continue;
-			}
-			String uri = event.getUri();
-			if (uri != null && uri.endsWith("/.classpath")) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	private void notifyJdtlsJreContainers() {
-		IProjectsManager projectsManager = getProjectsManager();
-		if (projectsManager == null) {
-			return;
-		}
-		List<com.github.cabutchei.rsp.server.spi.workspace.JreContainerMapping> mappings = projectsManager
-				.listNonStandardJreContainers();
-		if (mappings == null || mappings.isEmpty()) {
-			return;
-		}
-		RSPWTPClient client = ClientThreadLocal.getActiveClient();
-		if (client == null) {
-			return;
-		}
-		List<com.github.cabutchei.rsp.api.dao.JreContainerMapping> apiMappings = new ArrayList<>();
-		for (com.github.cabutchei.rsp.server.spi.workspace.JreContainerMapping mapping : mappings) {
-			if (mapping == null) {
-				continue;
-			}
-			String javaHome = mapping.getJavaHome() == null ? null : mapping.getJavaHome().toString();
-			apiMappings.add(new com.github.cabutchei.rsp.api.dao.JreContainerMapping(
-					mapping.getProjectName(),
-					mapping.getProjectUri(),
-					mapping.getContainerPath(),
-					mapping.getVmName(),
-					javaHome));
-		}
-		if (apiMappings.isEmpty()) {
-			return;
-		}
-		client.jdtlsJreContainersDetected(new JreContainerMappings(apiMappings));
-	}
-
-	private void notifyJdtlsClasspathContainers() {
-		RSPWTPClient client = ClientThreadLocal.getActiveClient();
-		if (client == null) {
-			return;
-		}
-		notifyJdtlsClasspathContainers(Arrays.asList(client));
-	}
-
-	private void notifyJdtlsClasspathContainersForConnectedClients() {
-		notifyJdtlsClasspathContainers(getClients());
-	}
-
-	private void notifyJdtlsClasspathContainers(List<RSPWTPClient> targetClients) {
-		if (targetClients == null || targetClients.isEmpty()) {
-			return;
-		}
-		IProjectsManager projectsManager = getProjectsManager();
-		if (projectsManager == null) {
-			return;
-		}
-		List<com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerMapping> mappings = projectsManager
-				.listClasspathContainers();
-		if (mappings == null) {
-			mappings = new ArrayList<>();
-		}
-		List<ClasspathContainerMapping> apiMappings = new ArrayList<>();
-		for (com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerMapping mapping : mappings) {
-			if (mapping == null) {
-				continue;
-			}
-			List<ClasspathContainerEntry> entries = new ArrayList<>();
-			List<com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerEntry> sourceEntries = mapping.getEntries();
-			if (sourceEntries != null) {
-				for (com.github.cabutchei.rsp.server.spi.workspace.ClasspathContainerEntry entry : sourceEntries) {
-					if (entry == null) {
-						continue;
-					}
-					entries.add(new ClasspathContainerEntry(
-							entry.getEntryKind(),
-							entry.getPath(),
-							entry.getSourcePath(),
-							entry.getSourceRootPath(),
-							entry.getJavadocLocation(),
-							entry.isExported()));
-				}
-			}
-			apiMappings.add(new ClasspathContainerMapping(
-					mapping.getProjectName(),
-					mapping.getProjectUri(),
-					mapping.getContainerPath(),
-					mapping.getDescription(),
-					entries));
-		}
-		ClasspathContainerMappings notification = new ClasspathContainerMappings(apiMappings);
-		for (RSPWTPClient client : targetClients) {
-			if (client == null) {
-				continue;
-			}
-			try {
-				client.jdtlsClasspathContainersDetected(notification);
-			} catch (RuntimeException e) {
-				LOG.warn("Failed to notify client about classpath container changes", e);
-			}
-		}
 	}
 
 	/*

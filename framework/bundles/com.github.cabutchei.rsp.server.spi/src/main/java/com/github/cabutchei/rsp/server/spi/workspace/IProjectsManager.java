@@ -66,12 +66,6 @@ public interface IProjectsManager extends IWTPServiceProvider {
 	List<WorkspaceProject> listWorkspaceProjects();
 
 	/**
-	 * Scan workspace projects for non-standard JRE containers that resolve to a VM
-	 * install.
-	 */
-	List<JreContainerMapping> listNonStandardJreContainers();
-
-	/**
 	 * List glob-like watch patterns the client should monitor.
 	 */
 	List<String> getWatchPatterns();
@@ -80,24 +74,6 @@ public interface IProjectsManager extends IWTPServiceProvider {
 	 * React to a watched-file change.
 	 */
 	IStatus fileChanged(Path path, int changeType);
-
-	/**
-	 * List classpath containers from workspace Java projects, including their
-	 * resolved entries.
-	 */
-	List<ClasspathContainerMapping> listClasspathContainers();
-
-	/**
-	 * Register a listener for workspace classpath container changes.
-	 */
-	default void addClasspathContainersChangedListener(Runnable listener) {
-	}
-
-	/**
-	 * Remove a previously registered workspace classpath container change listener.
-	 */
-	default void removeClasspathContainersChangedListener(Runnable listener) {
-	}
 
 	/**
 	 * @return true if the workspace has been initialized

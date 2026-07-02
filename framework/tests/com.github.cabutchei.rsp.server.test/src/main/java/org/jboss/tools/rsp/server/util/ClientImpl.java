@@ -20,8 +20,6 @@ import com.github.cabutchei.rsp.api.dao.DiscoveryPath;
 import com.github.cabutchei.rsp.api.dao.JobHandle;
 import com.github.cabutchei.rsp.api.dao.JobProgress;
 import com.github.cabutchei.rsp.api.dao.JobRemoved;
-import com.github.cabutchei.rsp.api.dao.ClasspathContainerMappings;
-import com.github.cabutchei.rsp.api.dao.JreContainerMappings;
 import com.github.cabutchei.rsp.api.dao.MessageBoxNotification;
 import com.github.cabutchei.rsp.api.dao.ServerHandle;
 import com.github.cabutchei.rsp.api.dao.ServerProcess;
@@ -135,15 +133,4 @@ public RSPWTPServer getProxy() {
 		System.out.println("Job " + h.getName() + " (" + h.getId() + ") is at " + progress.getPercent() + "%");
 	}
 
-	@Override
-	public void jdtlsJreContainersDetected(JreContainerMappings mappings) {
-		int count = mappings == null || mappings.getMappings() == null ? 0 : mappings.getMappings().size();
-		System.out.println("Detected " + count + " non-standard JRE container mappings.");
-	}
-
-	@Override
-	public void jdtlsClasspathContainersDetected(ClasspathContainerMappings mappings) {
-		int count = mappings == null || mappings.getMappings() == null ? 0 : mappings.getMappings().size();
-		System.out.println("Detected " + count + " classpath container mappings.");
-	}
 }
