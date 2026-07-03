@@ -10,19 +10,25 @@ package com.github.cabutchei.rsp.server.workspace;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.function.Supplier;
 
 import com.github.cabutchei.rsp.api.dao.DidChangeWatchedFilesParams;
 import com.github.cabutchei.rsp.api.dao.FileEvent;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
 
 public class WorkspaceEventsHandler {
-	private final IProjectsManager projectsManager;
+	private final Supplier<IProjectsManager> projectsManagerSupplier;
 
 	public WorkspaceEventsHandler(IProjectsManager projectsManager) {
-		this.projectsManager = projectsManager;
+		this(() -> projectsManager);
+	}
+
+	public WorkspaceEventsHandler(Supplier<IProjectsManager> projectsManagerSupplier) {
+		this.projectsManagerSupplier = projectsManagerSupplier;
 	}
 
 	public void didChangeWatchedFiles(DidChangeWatchedFilesParams params) {
+		IProjectsManager projectsManager = getProjectsManager();
 		if (projectsManager == null || params == null || params.getChanges() == null) {
 			return;
 		}
@@ -54,5 +60,9 @@ public class WorkspaceEventsHandler {
 			return null;
 		}
 		return null;
+	}
+
+	private IProjectsManager getProjectsManager() {
+		return projectsManagerSupplier == null ? null : projectsManagerSupplier.get();
 	}
 }

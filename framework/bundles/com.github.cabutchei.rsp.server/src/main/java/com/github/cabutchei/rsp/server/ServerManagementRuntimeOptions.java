@@ -16,12 +16,26 @@ import com.github.cabutchei.rsp.server.workspace.InitHandlerOptions;
 public class ServerManagementRuntimeOptions {
 	private final boolean loadServersOnBootstrap;
 	private final InitHandlerOptions initHandlerOptions;
+	private final String logFilePath;
+	private final boolean requireWorkspaceModelCapability;
 
 	public ServerManagementRuntimeOptions(boolean loadServersOnBootstrap, InitHandlerOptions initHandlerOptions) {
+		this(loadServersOnBootstrap, initHandlerOptions, null, false);
+	}
+
+	public ServerManagementRuntimeOptions(boolean loadServersOnBootstrap, InitHandlerOptions initHandlerOptions,
+			String logFilePath) {
+		this(loadServersOnBootstrap, initHandlerOptions, logFilePath, false);
+	}
+
+	public ServerManagementRuntimeOptions(boolean loadServersOnBootstrap, InitHandlerOptions initHandlerOptions,
+			String logFilePath, boolean requireWorkspaceModelCapability) {
 		this.loadServersOnBootstrap = loadServersOnBootstrap;
 		this.initHandlerOptions = initHandlerOptions == null
 				? InitHandlerOptions.externalSocketDefaults()
 				: initHandlerOptions;
+		this.logFilePath = logFilePath;
+		this.requireWorkspaceModelCapability = requireWorkspaceModelCapability;
 	}
 
 	public boolean isLoadServersOnBootstrap() {
@@ -32,7 +46,20 @@ public class ServerManagementRuntimeOptions {
 		return initHandlerOptions;
 	}
 
+	public String getLogFilePath() {
+		return logFilePath;
+	}
+
+	public boolean requiresWorkspaceModelCapability() {
+		return requireWorkspaceModelCapability;
+	}
+
 	public static ServerManagementRuntimeOptions jdtlsOwnedWorkspaceDefaults() {
-		return new ServerManagementRuntimeOptions(false, InitHandlerOptions.jdtlsOwnedWorkspaceDefaults());
+		return jdtlsOwnedWorkspaceDefaults(null);
+	}
+
+	public static ServerManagementRuntimeOptions jdtlsOwnedWorkspaceDefaults(String logFilePath) {
+		return new ServerManagementRuntimeOptions(false, InitHandlerOptions.jdtlsOwnedWorkspaceDefaults(), logFilePath,
+				true);
 	}
 }

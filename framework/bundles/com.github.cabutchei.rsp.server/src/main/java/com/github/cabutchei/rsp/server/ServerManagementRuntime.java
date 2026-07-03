@@ -15,6 +15,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
+import com.github.cabutchei.rsp.server.spi.model.IWorkspaceModelCapability;
 
 /**
  * Transport-neutral runtime wrapper around the server-management core.
@@ -28,20 +29,27 @@ public class ServerManagementRuntime {
 	private final ServerManagementServerLauncher launcher;
 	private final String host;
 	private final int port;
+	private final String logFilePath;
 	private final AtomicBoolean serversLoaded = new AtomicBoolean(false);
 	private final AtomicBoolean shutdown = new AtomicBoolean(false);
 
 	public ServerManagementRuntime(IServerManagementModel managementModel, ServerManagementServerImpl server) {
-		this(managementModel, server, null, "localhost", -1);
+		this(managementModel, server, null, "localhost", -1, null);
 	}
 
 	public ServerManagementRuntime(IServerManagementModel managementModel, ServerManagementServerImpl server,
 			ServerManagementServerLauncher launcher, String host, int port) {
+		this(managementModel, server, launcher, host, port, null);
+	}
+
+	public ServerManagementRuntime(IServerManagementModel managementModel, ServerManagementServerImpl server,
+			ServerManagementServerLauncher launcher, String host, int port, String logFilePath) {
 		this.managementModel = managementModel;
 		this.server = server;
 		this.launcher = launcher;
 		this.host = host == null ? "localhost" : host;
 		this.port = port;
+		this.logFilePath = logFilePath;
 	}
 
 	public IServerManagementModel getModel() {
@@ -58,6 +66,10 @@ public class ServerManagementRuntime {
 
 	public int getPort() {
 		return port;
+	}
+
+	public String getLogFilePath() {
+		return logFilePath;
 	}
 
 	public boolean isSocketServer() {
@@ -86,6 +98,10 @@ public class ServerManagementRuntime {
 		clearIfActiveEmbeddedRuntime(this);
 		if (launcher != null) {
 			launcher.shutdown();
+			if (LauncherSingleton.getDefault().getLauncher() == launcher) {
+				LauncherSingleton.getDefault().setLauncher(null);
+			}
+			EmbeddedRuntimeLog.close();
 			return;
 		}
 		server.dispose();
@@ -96,33 +112,66 @@ public class ServerManagementRuntime {
 		}
 		ServerManagementServerImpl.shutdownAsyncExecutor();
 		ShutdownExecutor.getExecutor().shutdown();
+		EmbeddedRuntimeLog.close();
 	}
 
 	public static ServerManagementRuntime bootstrapEmbedded(String instanceId, Integer requestedPort,
 			ServerManagementRuntimeOptions options)
 			throws CoreException {
 		synchronized (EMBEDDED_LOCK) {
-			if (activeEmbeddedRuntime != null) {
-				return activeEmbeddedRuntime;
-			}
 			ServerManagementRuntimeOptions resolvedOptions = options == null
 					? ServerManagementRuntimeOptions.jdtlsOwnedWorkspaceDefaults()
 					: options;
+			if (activeEmbeddedRuntime != null) {
+				if (resolvedOptions.requiresWorkspaceModelCapability() && !isWorkspaceCapable(activeEmbeddedRuntime)) {
+					EmbeddedRuntimeLog.append("[embedded] restarting stale runtime with non-workspace model: "
+							+ describeModel(activeEmbeddedRuntime.getModel()));
+					ServerManagementRuntime staleRuntime = activeEmbeddedRuntime;
+					activeEmbeddedRuntime = null;
+					staleRuntime.shutdown();
+				} else {
+					return activeEmbeddedRuntime;
+				}
+			}
+			try {
+				EmbeddedRuntimeLog.configure(resolvedOptions.getLogFilePath());
+			} catch (IOException ioe) {
+				throw new CoreException(new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID,
+						"Failed to initialize embedded runtime log.", ioe));
+			}
 			int resolvedPort = requestedPort == null ? 0 : requestedPort.intValue();
 			String launcherId = instanceId == null || instanceId.trim().isEmpty() ? "embedded" : instanceId.trim();
 			ServerManagementServerLauncher launcher = ServerCoreActivator.createLauncher(launcherId,
 					resolvedOptions.getInitHandlerOptions(), resolvedOptions.isLoadServersOnBootstrap());
-			ServerCoreActivator.addDelayedExtensionsToModel();
+			IServerManagementModel model = launcher.getModel();
+			EmbeddedRuntimeLog.append("[embedded] created launcher " + launcher.getClass().getName()
+					+ " with management model " + describeModel(model));
+			if (resolvedOptions.requiresWorkspaceModelCapability() && !isWorkspaceCapable(model)) {
+				throw new CoreException(new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID,
+						"Embedded bootstrap did not create a workspace-capable management model. Got "
+								+ describeModel(model) + "."));
+			}
 			try {
+				LauncherSingleton.getDefault().setLauncher(launcher);
+				ServerCoreActivator.addDelayedExtensionsToModel();
 				launcher.launch(resolvedPort);
 			} catch (CoreException e) {
+				EmbeddedRuntimeLog.append("[embedded] bootstrap failed: " + e.getMessage());
+				if (LauncherSingleton.getDefault().getLauncher() == launcher) {
+					LauncherSingleton.getDefault().setLauncher(null);
+				}
 				throw e;
 			} catch (Exception e) {
+				EmbeddedRuntimeLog.append("[embedded] bootstrap failed: " + e.getMessage());
+				if (LauncherSingleton.getDefault().getLauncher() == launcher) {
+					LauncherSingleton.getDefault().setLauncher(null);
+				}
 				throw new CoreException(new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID,
 						"Failed to launch embedded RSP socket server.", e));
 			}
 			ServerManagementRuntime runtime = new ServerManagementRuntime(launcher.getModel(), launcher.serverImpl,
-					launcher, "localhost", launcher.getBoundPort());
+					launcher, "localhost", launcher.getBoundPort(), EmbeddedRuntimeLog.getPath());
+			EmbeddedRuntimeLog.append("[embedded] socket server listening on localhost:" + launcher.getBoundPort());
 			activeEmbeddedRuntime = runtime;
 			return runtime;
 		}
@@ -148,5 +197,17 @@ public class ServerManagementRuntime {
 				activeEmbeddedRuntime = null;
 			}
 		}
+	}
+
+	private static boolean isWorkspaceCapable(ServerManagementRuntime runtime) {
+		return runtime != null && isWorkspaceCapable(runtime.getModel());
+	}
+
+	private static boolean isWorkspaceCapable(IServerManagementModel model) {
+		return model instanceof IWorkspaceModelCapability;
+	}
+
+	private static String describeModel(IServerManagementModel model) {
+		return model == null ? "<null>" : model.getClass().getName();
 	}
 }

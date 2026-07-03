@@ -18,15 +18,20 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
 import java.nio.file.Paths;
+import java.util.Collections;
+
 import org.junit.Before;
 import org.junit.Test;
 
 import com.github.cabutchei.rsp.api.dao.ExportEarRequest;
+import com.github.cabutchei.rsp.api.dao.InitializeParams;
+import com.github.cabutchei.rsp.api.dao.InitializeResult;
 import com.github.cabutchei.rsp.api.dao.Status;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.server.ServerManagementServerImpl;
 import com.github.cabutchei.rsp.server.model.RemoteEventManager;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
+import com.github.cabutchei.rsp.server.spi.model.IServerModel;
 import com.github.cabutchei.rsp.server.spi.model.IWorkspaceModelCapability;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
 import com.github.cabutchei.rsp.server.spi.workspace.IWTPService;
@@ -43,6 +48,8 @@ public class WorkspaceOperationsTest {
 		wtpService = mock(IWTPService.class);
 		when(((IWorkspaceModelCapability) managementModel).getProjectsManager()).thenReturn(projectsManager);
 		when(projectsManager.getWTPService()).thenReturn(wtpService);
+		when(projectsManager.setAutoBuilding(false)).thenReturn(com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS);
+		when(projectsManager.getWatchPatterns()).thenReturn(Collections.emptyList());
 	}
 
 	@Test
@@ -99,5 +106,25 @@ public class WorkspaceOperationsTest {
 
 		assertFalse(result.isOK());
 		assertTrue(result.getMessage().contains("boom"));
+	}
+
+	@Test
+	public void testInitializeResolvesProjectsManagerLazily() throws Exception {
+		IServerModel serverModel = mock(IServerModel.class);
+		when(managementModel.getServerModel()).thenReturn(serverModel);
+		when(((IWorkspaceModelCapability) managementModel).getProjectsManager()).thenReturn(null, projectsManager);
+
+		ServerManagementServerImpl rsp = new ServerManagementServerImpl(null, managementModel) {
+			@Override
+			protected RemoteEventManager createRemoteEventManager() {
+				return null;
+			}
+		};
+
+		InitializeResult result = rsp.initialize(new InitializeParams()).get();
+
+		assertTrue(result.getStatus().isOK());
+		verify(projectsManager).initializeProjects(Collections.emptyList());
+		verify(serverModel).loadServers();
 	}
 }

@@ -194,6 +194,7 @@ public class WSTServerModel implements IServerModel {
 	
 	@Override
 	public CreateServerResponse createServer(String serverType, String id, Map<String, Object> attributes) {
+		ensureServerTypesRegistered();
 		try {
 			return createServerUnprotected(serverType, id, attributes);
 		} catch(CoreException e) {
@@ -453,11 +454,13 @@ public class WSTServerModel implements IServerModel {
 	
 	@Override
 	public IServerType getIServerType(String typeId) {
+		ensureServerTypesRegistered();
 		return typeId == null ? null : serverTypes.get(typeId);
 	}
-	
+
 	@Override
 	public ServerType[] getServerTypes() {
+		ensureServerTypesRegistered();
 		Set<String> types = serverTypes.keySet();
 		ArrayList<String> types2 = new ArrayList<>(types);
 		Collections.sort(types2);
@@ -471,6 +474,7 @@ public class WSTServerModel implements IServerModel {
 
 	@Override
 	public ServerType[] getAccessibleServerTypes() {
+		ensureServerTypesRegistered();
 		List<ServerType> free = new ArrayList<>();
 		List<ServerType> all = new ArrayList<>();
 		
@@ -493,6 +497,13 @@ public class WSTServerModel implements IServerModel {
 //		}
 //		
 		return all.toArray(new ServerType[all.size()]);
+	}
+
+	private void ensureServerTypesRegistered() {
+		if (!serverTypes.isEmpty()) {
+			return;
+		}
+		ServerCoreActivator.addDelayedExtensionsToModel();
 	}
 //	
 //	private boolean hasPermissions() {

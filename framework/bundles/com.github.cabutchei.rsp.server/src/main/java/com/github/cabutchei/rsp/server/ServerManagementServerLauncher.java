@@ -222,8 +222,10 @@ public class ServerManagementServerLauncher {
 				val = getBuffer().toString();
 				getBuffer().setLength(0);
 			}
-			if (val != null)
+			if (val != null) {
 				LOG.debug(val);
+				EmbeddedRuntimeLog.append(val);
+			}
 		}
 	}
 	
