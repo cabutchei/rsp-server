@@ -278,6 +278,20 @@ public class WTPService implements IWTPService {
 	}
 
 	@Override
+	public Set<Path> getDeploymentWatchPaths(Path deployablePath, String projectName) {
+		IProject project = resolveProject(deployablePath, projectName);
+		LinkedHashSet<Path> watchPaths = new LinkedHashSet<>();
+		if (project == null || !project.exists()) {
+			if (deployablePath != null) {
+				watchPaths.add(deployablePath.toAbsolutePath().normalize());
+			}
+			return watchPaths;
+		}
+		collectDeploymentWatchPaths(project, watchPaths, new HashSet<>());
+		return watchPaths;
+	}
+
+	@Override
 	public IStatus setGlobalAutoPublishing(boolean enabled) {
 		try {
 			if (ServerCore.isAutoPublishing() != enabled) {
@@ -382,6 +396,110 @@ public class WTPService implements IWTPService {
 			serverDeployablesCache.put(serverId, cached);
 		}
 		return cached;
+	}
+
+	private void collectDeploymentWatchPaths(IProject project, Set<Path> watchPaths, Set<String> visitedProjects) {
+		if (project == null || watchPaths == null || visitedProjects == null) {
+			return;
+		}
+		String projectName = project.getName();
+		if (projectName == null || !visitedProjects.add(projectName)) {
+			return;
+		}
+		try {
+			if (!project.isOpen()) {
+				project.open(new NullProgressMonitor());
+			}
+		} catch (CoreException ce) {
+			return;
+		}
+		addComponentDescriptorWatchPath(project, watchPaths);
+		addComponentResourceWatchPaths(project, watchPaths);
+		addComponentReferenceWatchPaths(project, watchPaths, visitedProjects);
+	}
+
+	private void addComponentDescriptorWatchPath(IProject project, Set<Path> watchPaths) {
+		if (project == null || watchPaths == null) {
+			return;
+		}
+		IPath descriptorLocation = project.getFile(".settings/org.eclipse.wst.common.component").getLocation();
+		if (descriptorLocation != null) {
+			watchPaths.add(descriptorLocation.toFile().toPath().toAbsolutePath().normalize());
+		}
+	}
+
+	private void addComponentResourceWatchPaths(IProject project, Set<Path> watchPaths) {
+		if (project == null || watchPaths == null) {
+			return;
+		}
+		StructureEdit structureEdit = null;
+		try {
+			structureEdit = StructureEdit.getStructureEditForRead(project);
+			WorkbenchComponent component = structureEdit.getComponent();
+			if (component == null) {
+				return;
+			}
+			Object[] resources = component.getResources().toArray();
+			for (Object resourceObj : resources) {
+				if (!(resourceObj instanceof ComponentResource)) {
+					continue;
+				}
+				ComponentResource resource = (ComponentResource) resourceObj;
+				IPath sourcePath = resource.getSourcePath();
+				IPath projectLocation = project.getLocation();
+				if (sourcePath == null || projectLocation == null) {
+					continue;
+				}
+				IPath resolved = sourcePath.isAbsolute()
+						? projectLocation.append(sourcePath.makeRelative())
+						: projectLocation.append(sourcePath);
+				watchPaths.add(resolved.toFile().toPath().toAbsolutePath().normalize());
+			}
+		} catch (Exception e) {
+			return;
+		} catch (Throwable e) {
+			return;
+		} finally {
+			if (structureEdit != null) {
+				structureEdit.dispose();
+			}
+		}
+	}
+
+	private void addComponentReferenceWatchPaths(IProject project, Set<Path> watchPaths, Set<String> visitedProjects) {
+		if (project == null || watchPaths == null || visitedProjects == null) {
+			return;
+		}
+		IVirtualComponent component = ComponentCore.createComponent(project);
+		if (component == null) {
+			return;
+		}
+		HashMap<String, Object> options = new HashMap<>();
+		options.put(IVirtualComponent.REQUESTED_REFERENCE_TYPE, IVirtualComponent.DISPLAYABLE_REFERENCES_ALL);
+		IVirtualReference[] refs = component.getReferences(options);
+		if (refs == null) {
+			return;
+		}
+		for (IVirtualReference ref : refs) {
+			if (ref == null) {
+				continue;
+			}
+			IVirtualComponent referenced = ref.getReferencedComponent();
+			if (referenced == null) {
+				continue;
+			}
+			if (referenced.isBinary()) {
+				IPath componentPath = referenced.getAdapter(IPath.class);
+				if (componentPath != null) {
+					watchPaths.add(componentPath.toFile().toPath().toAbsolutePath().normalize());
+				}
+				continue;
+			}
+			IProject referencedProject = referenced.getProject();
+			if (referencedProject != null && referencedProject.exists()) {
+				collectDeploymentWatchPaths(referencedProject, watchPaths, visitedProjects);
+			}
+		}
 	}
 
 	private List<IProject> listAvailableDeploymentAssemblyProjects(Path projectPath, String projectName) {

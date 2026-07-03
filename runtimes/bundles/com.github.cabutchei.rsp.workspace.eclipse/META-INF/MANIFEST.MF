@@ -5,7 +5,8 @@ Bundle-SymbolicName: com.github.cabutchei.rsp.workspace.eclipse
 Automatic-Module-Name: com.github.cabutchei.rsp.workspace.eclipse
 Bundle-Version: 0.7.0.Final
 Bundle-RequiredExecutionEnvironment: JavaSE-11
-Import-Package: com.github.cabutchei.rsp.eclipse.core.runtime,
+Import-Package: com.github.cabutchei.rsp.api.dao,
+ com.github.cabutchei.rsp.eclipse.core.runtime,
  com.github.cabutchei.rsp.server.spi.workspace,
  org.eclipse.core.resources,
  org.eclipse.core.runtime,

@@ -13,7 +13,10 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -43,6 +46,7 @@ import com.github.cabutchei.rsp.api.dao.DeploymentAssemblyRequest;
 import com.github.cabutchei.rsp.api.dao.DeploymentAssemblyResponse;
 import com.github.cabutchei.rsp.api.dao.DeploymentAssemblyUpdateRequest;
 import com.github.cabutchei.rsp.api.dao.DeployableReference;
+import com.github.cabutchei.rsp.api.dao.DeployableState;
 import com.github.cabutchei.rsp.api.dao.DiscoveryPath;
 import com.github.cabutchei.rsp.api.dao.DownloadRuntimeDescription;
 import com.github.cabutchei.rsp.api.dao.DownloadSingleRuntimeRequest;
@@ -79,6 +83,7 @@ import com.github.cabutchei.rsp.api.dao.Status;
 import com.github.cabutchei.rsp.api.dao.StopServerAttributes;
 import com.github.cabutchei.rsp.api.dao.UpdateServerRequest;
 import com.github.cabutchei.rsp.api.dao.UpdateServerResponse;
+import com.github.cabutchei.rsp.api.dao.WatchPatternsChangedParams;
 import com.github.cabutchei.rsp.api.dao.WorkspaceProject;
 import com.github.cabutchei.rsp.api.dao.WorkflowResponse;
 import com.github.cabutchei.rsp.api.dao.util.CreateServerAttributesUtility;
@@ -1067,6 +1072,9 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		IStatus status = add
 				? wtpService.addDeploymentAssemblyEntry(projectPath, projectName, entry)
 				: wtpService.removeDeploymentAssemblyEntry(projectPath, projectName, entry);
+		if (status != null && status.isOK()) {
+			refreshWorkspaceWatchPatterns();
+		}
 		return StatusConverter.convert(status == null
 				? new com.github.cabutchei.rsp.eclipse.core.runtime.Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Operation failed")
 				: status);
@@ -1124,6 +1132,9 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	@Override
 	public void didChangeWatchedFiles(DidChangeWatchedFilesParams params) {
 		workspaceEventsHandler.didChangeWatchedFiles(params);
+		if (containsDeploymentAssemblyChange(params)) {
+			refreshWorkspaceWatchPatterns();
+		}
 	}
 
 	/*
@@ -1218,6 +1229,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		IStatus stat = managementModel.getServerModel().addDeployable(server, req.getDeployableReference());
 		if (stat != null && stat.isOK()) {
 			invalidateDeployableResourceCache(req.getServer());
+			refreshWorkspaceWatchPatterns();
 		}
 		return StatusConverter.convert(stat);
 	}
@@ -1239,8 +1251,71 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		IStatus stat = managementModel.getServerModel().removeDeployable(server, reference.getDeployableReference());
 		if (stat != null && stat.isOK()) {
 			invalidateDeployableResourceCache(reference.getServer());
+			refreshWorkspaceWatchPatterns();
 		}
 		return StatusConverter.convert(stat);
+	}
+
+	private void refreshWorkspaceWatchPatterns() {
+		IProjectsManager projectsManager = getProjectsManager();
+		if (projectsManager == null) {
+			return;
+		}
+		LinkedHashSet<String> before = new LinkedHashSet<>(projectsManager.getWatchPatterns());
+		projectsManager.syncDeployableWatchPatterns(collectActiveDeployables());
+		LinkedHashSet<String> after = new LinkedHashSet<>(projectsManager.getWatchPatterns());
+		List<String> added = after.stream().filter(pattern -> !before.contains(pattern)).collect(Collectors.toList());
+		List<String> removed = before.stream().filter(pattern -> !after.contains(pattern)).collect(Collectors.toList());
+		if (added.isEmpty() && removed.isEmpty()) {
+			return;
+		}
+		WatchPatternsChangedParams params = new WatchPatternsChangedParams(added, removed);
+		for (RSPWTPClient client : getClients()) {
+			try {
+				client.watchPatternsChanged(params);
+			} catch (Exception e) {
+				LOG.warn("Failed to notify client about watch-pattern changes", e);
+			}
+		}
+	}
+
+	private List<DeployableReference> collectActiveDeployables() {
+		if (managementModel == null || managementModel.getServerModel() == null
+				|| managementModel.getServerModel().getServers() == null
+				|| managementModel.getServerModel().getServers().isEmpty()) {
+			return Collections.emptyList();
+		}
+		Map<String, DeployableReference> deployables = new LinkedHashMap<>();
+		for (IServer server : managementModel.getServerModel().getServers().values()) {
+			if (server == null) {
+				continue;
+			}
+			List<DeployableState> states = managementModel.getServerModel().getDeployables(server);
+			if (states == null) {
+				continue;
+			}
+			for (DeployableState state : states) {
+				DeployableReference reference = state == null ? null : state.getReference();
+				if (reference == null || reference.getPath() == null || reference.getPath().isBlank()) {
+					continue;
+				}
+				deployables.put(reference.getLabel() + "|" + reference.getPath(), new DeployableReference(reference));
+			}
+		}
+		return new ArrayList<>(deployables.values());
+	}
+
+	private boolean containsDeploymentAssemblyChange(DidChangeWatchedFilesParams params) {
+		if (params == null || params.getChanges() == null) {
+			return false;
+		}
+		for (com.github.cabutchei.rsp.api.dao.FileEvent change : params.getChanges()) {
+			String uri = change == null ? null : change.getUri();
+			if (uri != null && uri.endsWith("/.settings/org.eclipse.wst.common.component")) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	@Override
