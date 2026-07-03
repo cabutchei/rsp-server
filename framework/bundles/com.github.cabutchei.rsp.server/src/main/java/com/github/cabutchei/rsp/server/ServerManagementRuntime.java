@@ -92,12 +92,16 @@ public class ServerManagementRuntime {
 	}
 
 	public void shutdown() {
+		shutdown(true);
+	}
+
+	void shutdown(boolean stopFramework) {
 		if (!shutdown.compareAndSet(false, true)) {
 			return;
 		}
 		clearIfActiveEmbeddedRuntime(this);
 		if (launcher != null) {
-			launcher.shutdown();
+			launcher.shutdown(false);
 			if (LauncherSingleton.getDefault().getLauncher() == launcher) {
 				LauncherSingleton.getDefault().setLauncher(null);
 			}
@@ -111,7 +115,9 @@ public class ServerManagementRuntime {
 			// ignore shutdown-time unlock failures
 		}
 		ServerManagementServerImpl.shutdownAsyncExecutor();
-		ShutdownExecutor.getExecutor().shutdown();
+		if (stopFramework) {
+			ShutdownExecutor.getExecutor().shutdown();
+		}
 		EmbeddedRuntimeLog.close();
 	}
 
