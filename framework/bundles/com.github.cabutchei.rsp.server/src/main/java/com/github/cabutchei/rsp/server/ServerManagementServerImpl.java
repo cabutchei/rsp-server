@@ -146,9 +146,8 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		this.launcher = launcher;
 		this.managementModel = managementModel;
 		this.remoteEventManager = createRemoteEventManager();
-		IProjectsManager projectsManager = getProjectsManager();
-		this.initHandler = new InitHandler(managementModel, projectsManager, initHandlerOptions);
-		this.workspaceEventsHandler = new WorkspaceEventsHandler(projectsManager);
+		this.initHandler = new InitHandler(managementModel, this::getProjectsManager, initHandlerOptions);
+		this.workspaceEventsHandler = new WorkspaceEventsHandler(this::getProjectsManager);
 	}
 	
 	protected RemoteEventManager createRemoteEventManager() {

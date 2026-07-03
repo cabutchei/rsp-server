@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 import com.github.cabutchei.rsp.api.dao.InitializeParams;
 import com.github.cabutchei.rsp.api.dao.InitializeResult;
@@ -29,7 +30,7 @@ import com.github.cabutchei.rsp.server.spi.workspace.IWTPConfiguration;
 
 public class InitHandler {
 	private final IServerManagementModel managementModel;
-	private final IProjectsManager projectsManager;
+	private final Supplier<IProjectsManager> projectsManagerSupplier;
 	private final InitHandlerOptions options;
 	private final AtomicBoolean serversLoaded = new AtomicBoolean(false);
 
@@ -39,12 +40,18 @@ public class InitHandler {
 
 	public InitHandler(IServerManagementModel managementModel, IProjectsManager projectsManager,
 			InitHandlerOptions options) {
+		this(managementModel, () -> projectsManager, options);
+	}
+
+	public InitHandler(IServerManagementModel managementModel, Supplier<IProjectsManager> projectsManagerSupplier,
+			InitHandlerOptions options) {
 		this.managementModel = managementModel;
-		this.projectsManager = projectsManager;
+		this.projectsManagerSupplier = projectsManagerSupplier;
 		this.options = options == null ? InitHandlerOptions.externalSocketDefaults() : options;
 	}
 
 	public InitializeResult initialize(InitializeParams params) {
+		IProjectsManager projectsManager = getProjectsManager();
 		if (projectsManager == null) {
 			return new InitializeResult(errorStatus("Projects manager unavailable"), Collections.emptyList());
 		}
@@ -67,6 +74,11 @@ public class InitHandler {
 	}
 
 	private IStatus configureAutoBuilding() {
+		IProjectsManager projectsManager = getProjectsManager();
+		if (projectsManager == null) {
+			return new com.github.cabutchei.rsp.eclipse.core.runtime.Status(IStatus.ERROR,
+					ServerCoreActivator.BUNDLE_ID, "Projects manager unavailable");
+		}
 		Boolean autoBuilding = options.getAutoBuilding();
 		if (autoBuilding == null) {
 			return com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS;
@@ -75,6 +87,11 @@ public class InitHandler {
 	}
 
 	private IStatus configureAutoPublishing() {
+		IProjectsManager projectsManager = getProjectsManager();
+		if (projectsManager == null) {
+			return new com.github.cabutchei.rsp.eclipse.core.runtime.Status(IStatus.ERROR,
+					ServerCoreActivator.BUNDLE_ID, "Projects manager unavailable");
+		}
 		Boolean autoPublishing = options.getAutoPublishing();
 		if (autoPublishing == null) {
 			return com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS;
@@ -146,5 +163,9 @@ public class InitHandler {
 	private Status errorStatus(String message) {
 		return StatusConverter.convert(new com.github.cabutchei.rsp.eclipse.core.runtime.Status(IStatus.ERROR,
 				ServerCoreActivator.BUNDLE_ID, message));
+	}
+
+	private IProjectsManager getProjectsManager() {
+		return projectsManagerSupplier == null ? null : projectsManagerSupplier.get();
 	}
 }

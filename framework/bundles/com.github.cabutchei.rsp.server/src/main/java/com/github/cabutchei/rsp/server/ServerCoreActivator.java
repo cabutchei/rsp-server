@@ -12,9 +12,12 @@ import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
 import com.github.cabutchei.rsp.server.spi.model.DelayedExtensionManager;
 import com.github.cabutchei.rsp.server.spi.model.DelayedExtensionManager.IDelayedExtension;
 import com.github.cabutchei.rsp.server.workspace.InitHandlerOptions;
+import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
+import org.osgi.framework.FrameworkUtil;
+import org.osgi.framework.wiring.BundleWiring;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,7 +93,10 @@ public class ServerCoreActivator implements BundleActivator {
 			return;
 		}
 		ServerManagementServerLauncher launcher2 = launcher;
-		ClassLoader osgiContextClassLoader = Thread.currentThread().getContextClassLoader();
+		ClassLoader osgiContextClassLoader = resolveBundleClassLoader();
+		if (osgiContextClassLoader == null) {
+			osgiContextClassLoader = Thread.currentThread().getContextClassLoader();
+		}
 		if (osgiContextClassLoader == null) {
 			osgiContextClassLoader = getClass().getClassLoader();
 		}
@@ -114,6 +120,15 @@ public class ServerCoreActivator implements BundleActivator {
 		for( int i = 0; i < addToModel.length; i++ ) {
 			addToModel[i].addExtensionsToModel();
 		}
+	}
+
+	private ClassLoader resolveBundleClassLoader() {
+		Bundle bundle = FrameworkUtil.getBundle(ServerCoreActivator.class);
+		if (bundle == null) {
+			return null;
+		}
+		BundleWiring wiring = bundle.adapt(BundleWiring.class);
+		return wiring == null ? null : wiring.getClassLoader();
 	}
 	
 	private void performStop() {

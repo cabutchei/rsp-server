@@ -1,6 +1,7 @@
 package com.github.cabutchei.rsp.server.websphere.impl;
 
 import java.io.IOException;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -18,10 +19,17 @@ import com.ibm.ws.ast.st.v85.core.internal.util.ServerXmlFileHandler;
 import com.ibm.ws.ast.st.common.core.internal.AbstractWASServerBehaviour;
 import com.ibm.ws.ast.st.core.internal.util.IMemento;
 import com.ibm.ws.ast.st.core.internal.util.XMLMemento;
-
+import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
+import org.osgi.framework.wiring.BundleWiring;
 
 
 public final class WebSphereWstServerAccess implements IWstServerDelegateAccess<WASServer> {
+	private static final String WS_PROFILE_RESOURCE =
+			"com/ibm/ws/profile/resourcebundle/WSProfileResourceBundle.class";
+	private static volatile ClassLoader websphereContextClassLoader;
+
 	private WebSphereWstServerAccess() {
 		// utility class
 	}
@@ -43,13 +51,15 @@ public final class WebSphereWstServerAccess implements IWstServerDelegateAccess<
 		if (wstDelegate == null) {
 			throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
 						"WST WASServer delegate not found"));
-					}
-		List<String> profiles = Arrays.asList(wstDelegate.getProfileNames());
-		if (profiles == null || profiles.isEmpty() || !profiles.contains(wstDelegate.getProfileName())) {
-			return new Status(IStatus.ERROR, Activator.BUNDLE_ID, "WebSphere profile '"
-					+ wstDelegate.getProfileName() + "' does not exist in the specified WebSphere installation.");
 		}
-		return Status.OK_STATUS;
+		return withWebSphereContextClassLoader(() -> {
+			List<String> profiles = Arrays.asList(wstDelegate.getProfileNames());
+			if (profiles == null || profiles.isEmpty() || !profiles.contains(wstDelegate.getProfileName())) {
+				return new Status(IStatus.ERROR, Activator.BUNDLE_ID, "WebSphere profile '"
+						+ wstDelegate.getProfileName() + "' does not exist in the specified WebSphere installation.");
+			}
+			return Status.OK_STATUS;
+		});
 	}
 
 	public static ServerXmlFileHandler createServerXmlFileHandler(IServerAttributes server) throws IOException, CoreException  {
@@ -59,7 +69,65 @@ public final class WebSphereWstServerAccess implements IWstServerDelegateAccess<
 	}
 
 	public static ServerXmlFileHandler createServerXmlFileHandler(String curWASInstallRoot, String profileName, String serverName) throws IOException {
-		return ServerXmlFileHandler.create(curWASInstallRoot, profileName, serverName);
+		return withWebSphereContextClassLoader(() -> ServerXmlFileHandler.create(curWASInstallRoot, profileName, serverName));
+	}
+
+	private static <T, E extends Exception> T withWebSphereContextClassLoader(ThrowingSupplier<T, E> supplier) throws E {
+		ClassLoader original = Thread.currentThread().getContextClassLoader();
+		ClassLoader websphereLoader = getWebSphereContextClassLoader();
+		if (websphereLoader == null || websphereLoader == original) {
+			return supplier.get();
+		}
+		Thread.currentThread().setContextClassLoader(websphereLoader);
+		try {
+			return supplier.get();
+		} finally {
+			Thread.currentThread().setContextClassLoader(original);
+		}
+	}
+
+	private static ClassLoader getWebSphereContextClassLoader() {
+		ClassLoader cached = websphereContextClassLoader;
+		if (hasWebSphereProfileResource(cached)) {
+			return cached;
+		}
+		ClassLoader resolved = resolveWebSphereContextClassLoader();
+		if (hasWebSphereProfileResource(resolved)) {
+			websphereContextClassLoader = resolved;
+			return resolved;
+		}
+		return null;
+	}
+
+	private static ClassLoader resolveWebSphereContextClassLoader() {
+		BundleContext context = getBundleContext();
+		if (context == null) {
+			return null;
+		}
+		for (Bundle bundle : context.getBundles()) {
+			URL resource = bundle.getResource(WS_PROFILE_RESOURCE);
+			if (resource == null) {
+				continue;
+			}
+			BundleWiring wiring = bundle.adapt(BundleWiring.class);
+			if (wiring == null) {
+				continue;
+			}
+			ClassLoader loader = wiring.getClassLoader();
+			if (hasWebSphereProfileResource(loader)) {
+				return loader;
+			}
+		}
+		return null;
+	}
+
+	private static BundleContext getBundleContext() {
+		Bundle bundle = FrameworkUtil.getBundle(WebSphereWstServerAccess.class);
+		return bundle == null ? null : bundle.getBundleContext();
+	}
+
+	private static boolean hasWebSphereProfileResource(ClassLoader loader) {
+		return loader != null && loader.getResource(WS_PROFILE_RESOURCE) != null;
 	}
 
 	// public static int getDebugPortNum(IServerAttributes server) throws CoreException {
@@ -184,5 +252,10 @@ public final class WebSphereWstServerAccess implements IWstServerDelegateAccess<
 		long now = System.currentTimeMillis();
 		long seq = XMI_COUNTER.incrementAndGet();
 		return "CustomProperty_" + now + "_" + seq;
+	}
+
+	@FunctionalInterface
+	private interface ThrowingSupplier<T, E extends Exception> {
+		T get() throws E;
 	}
 }
