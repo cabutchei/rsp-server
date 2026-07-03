@@ -240,6 +240,10 @@ public class ServerManagementServerLauncher {
 	}
 	
 	public void shutdown() {
+		shutdown(true);
+	}
+
+	void shutdown(boolean stopFramework) {
 		// persistenceEventManager.saveState();
 		if( socketRunnable != null )
 			socketRunnable.stopListening();
@@ -249,7 +253,7 @@ public class ServerManagementServerLauncher {
 				serverSocket.close();
 		} catch(IOException ioe) {
 		}
-		runtime.shutdown();
+		runtime.shutdown(stopFramework);
 	}
 
 	public int getBoundPort() {
