@@ -12,12 +12,9 @@ import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
 import com.github.cabutchei.rsp.server.spi.model.DelayedExtensionManager;
 import com.github.cabutchei.rsp.server.spi.model.DelayedExtensionManager.IDelayedExtension;
 import com.github.cabutchei.rsp.server.workspace.InitHandlerOptions;
-import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
-import org.osgi.framework.FrameworkUtil;
-import org.osgi.framework.wiring.BundleWiring;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,14 +90,6 @@ public class ServerCoreActivator implements BundleActivator {
 			return;
 		}
 		ServerManagementServerLauncher launcher2 = launcher;
-		ClassLoader osgiContextClassLoader = resolveBundleClassLoader();
-		if (osgiContextClassLoader == null) {
-			osgiContextClassLoader = Thread.currentThread().getContextClassLoader();
-		}
-		if (osgiContextClassLoader == null) {
-			osgiContextClassLoader = getClass().getClassLoader();
-		}
-		OsgiClassLoaderHolder.set(osgiContextClassLoader);
 		Thread serverThread = new Thread(() -> {
 				addDelayedExtensionsToModel();
 				try {
@@ -110,8 +99,6 @@ public class ServerCoreActivator implements BundleActivator {
 				}
 			}, 
 			"Launch RSP Server");
-		// Use an OSGi-aware context classloader for request handling.
-		serverThread.setContextClassLoader(osgiContextClassLoader);
 		serverThread.start();
 	}
 
@@ -122,15 +109,6 @@ public class ServerCoreActivator implements BundleActivator {
 		}
 	}
 
-	private ClassLoader resolveBundleClassLoader() {
-		Bundle bundle = FrameworkUtil.getBundle(ServerCoreActivator.class);
-		if (bundle == null) {
-			return null;
-		}
-		BundleWiring wiring = bundle.adapt(BundleWiring.class);
-		return wiring == null ? null : wiring.getClassLoader();
-	}
-	
 	private void performStop() {
 		try {
 			context.getBundle(0).stop();
