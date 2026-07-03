@@ -13,7 +13,6 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 
 import org.eclipse.lsp4j.jsonrpc.MessageConsumer;
 import org.eclipse.lsp4j.jsonrpc.MessageProducer;
@@ -23,18 +22,8 @@ import com.github.cabutchei.rsp.server.spi.client.MessageContextStore;
 import com.github.cabutchei.rsp.server.spi.client.MessageContextStore.MessageContext;
 
 class RSPServerSocketLauncher<T> extends SocketLauncher<T> {
-	private static final ExecutorService REQUEST_EXECUTOR = Executors.newCachedThreadPool(new ThreadFactory() {
-		@Override
-		public Thread newThread(Runnable r) {
-			return new Thread(() -> {
-				ClassLoader loader = OsgiClassLoaderHolder.get();
-				if (loader != null) {
-					Thread.currentThread().setContextClassLoader(loader);
-				}
-				r.run();
-			}, "RSP-JSONRPC");
-		}
-	});
+	private static final ExecutorService REQUEST_EXECUTOR =
+			Executors.newCachedThreadPool(r -> new Thread(r, "RSP-JSONRPC"));
 
 	public RSPServerSocketLauncher(Object localService, 
 			Class<T> remoteInterface, Socket socket,
@@ -71,14 +60,6 @@ class RSPServerSocketLauncher<T> extends SocketLauncher<T> {
 
 		protected void processingStarted() {
 			super.processingStarted();
-			ClassLoader targetLoader = OsgiClassLoaderHolder.get();
-			if (targetLoader != null) {
-				Thread current = Thread.currentThread();
-				ClassLoader existing = current.getContextClassLoader();
-				if (existing != targetLoader) {
-					current.setContextClassLoader(targetLoader);
-				}
-			}
 			if (threadMap != null) {
 				threadMap.setContext(new MessageContext<T>(remoteProxy));
 			}

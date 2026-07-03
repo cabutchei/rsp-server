@@ -125,7 +125,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	private static final int ASYNC_THREAD_COUNT = Math.max(2, Runtime.getRuntime().availableProcessors());
 	private static final int ASYNC_QUEUE_CAPACITY = 256;
 	private static final Object ASYNC_EXECUTOR_LOCK = new Object();
-	private static volatile ExecutorService osgiExecutor;
+	private static volatile ExecutorService asyncExecutor;
 
 	private final List<RSPWTPClient> clients = new CopyOnWriteArrayList<>();
 	private final List<SocketLauncher<RSPWTPClient>> launchers = new CopyOnWriteArrayList<>();
@@ -1495,27 +1495,15 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		return StatusConverter.convert(is);
 	}
 
-	private static final Executor OSGI_EXECUTOR = command -> getOsgiExecutor().execute(() -> {
-		Thread thread = Thread.currentThread();
-		ClassLoader previous = thread.getContextClassLoader();
-		ClassLoader osgi = OsgiClassLoaderHolder.get();
-		if (osgi != null) {
-			thread.setContextClassLoader(osgi);
-		}
-		try {
-			command.run();
-		} finally {
-			thread.setContextClassLoader(previous);
-		}
-	});
+	private static final Executor ASYNC_EXECUTOR = command -> getAsyncExecutor().execute(command);
 
-	private static ExecutorService getOsgiExecutor() {
-		ExecutorService existing = osgiExecutor;
+	private static ExecutorService getAsyncExecutor() {
+		ExecutorService existing = asyncExecutor;
 		if (existing != null && !existing.isShutdown()) {
 			return existing;
 		}
 		synchronized (ASYNC_EXECUTOR_LOCK) {
-			existing = osgiExecutor;
+			existing = asyncExecutor;
 			if (existing == null || existing.isShutdown()) {
 				ThreadFactory threadFactory = new ThreadFactory() {
 					private final AtomicInteger nextId = new AtomicInteger(1);
@@ -1527,7 +1515,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 						return thread;
 					}
 				};
-				osgiExecutor = new ThreadPoolExecutor(
+				asyncExecutor = new ThreadPoolExecutor(
 						ASYNC_THREAD_COUNT,
 						ASYNC_THREAD_COUNT,
 						30L,
@@ -1536,15 +1524,15 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 						threadFactory,
 						new ThreadPoolExecutor.CallerRunsPolicy());
 			}
-			return osgiExecutor;
+			return asyncExecutor;
 		}
 	}
 
 	static void shutdownAsyncExecutor() {
 		ExecutorService toShutdown;
 		synchronized (ASYNC_EXECUTOR_LOCK) {
-			toShutdown = osgiExecutor;
-			osgiExecutor = null;
+			toShutdown = asyncExecutor;
+			asyncExecutor = null;
 		}
 		if (toShutdown != null) {
 			toShutdown.shutdown();
@@ -1569,7 +1557,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 				} finally {
 					ClientThreadLocal.setActiveClient(null);
 				}
-			}, OSGI_EXECUTOR);
+			}, ASYNC_EXECUTOR);
 		} catch (RejectedExecutionException ree) {
 			CompletableFuture<T> failed = new CompletableFuture<>();
 			failed.completeExceptionally(ree);
