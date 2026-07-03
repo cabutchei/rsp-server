@@ -32,6 +32,7 @@ import org.eclipse.jdt.core.JavaCore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.cabutchei.rsp.api.dao.DeployableReference;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.MultiStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
@@ -51,20 +52,14 @@ public class ProjectsManager implements IProjectsManager {
 	private static final int FILE_CHANGE_CHANGED = 2;
 	private static final int FILE_CHANGE_DELETED = 3;
 	private static final List<String> DEFAULT_WATCH_PATTERNS = Collections.unmodifiableList(Arrays.asList(
-			"**/.project",
-			"**/.classpath",
-			"**/.settings/org.eclipse.jdt.core.prefs",
-			"**/.settings/org.eclipse.wst.common.component",
-			"**/pom.xml",
-			"**/META-INF/MANIFEST.MF",
-			"**/build.properties",
-			"**/*.java",
-			"**/*.class"));
+			// JDT LS already watches Java/classpath/build metadata. We keep only the
+			// WTP-specific descriptor here and layer deployment-driven watches on top.
+			"**/.settings/org.eclipse.wst.common.component"));
 
 	private final IWorkspaceService workspaceService;
 	private final IWTPService wtpService;
 	private final List<IProjectImporter> projectImporters;
-	private final List<String> watchPatterns;
+	private final Set<String> dynamicWatchPatterns = new LinkedHashSet<>();
 	private final Set<Path> workspaceRoots = new LinkedHashSet<>();
 	private boolean initialized;
 
@@ -76,7 +71,6 @@ public class ProjectsManager implements IProjectsManager {
 		this.workspaceService = workspaceService;
 		this.wtpService = wtpService;
 		this.projectImporters = projectImporters == null ? Collections.emptyList() : new ArrayList<>(projectImporters);
-		this.watchPatterns = new ArrayList<>(DEFAULT_WATCH_PATTERNS);
 	}
 
 	private IProject getProject(String projectName) {
@@ -245,7 +239,37 @@ public class ProjectsManager implements IProjectsManager {
 
 	@Override
 	public List<String> getWatchPatterns() {
-		return Collections.unmodifiableList(new ArrayList<>(watchPatterns));
+		List<String> watchPatterns = new ArrayList<>(DEFAULT_WATCH_PATTERNS);
+		synchronized (dynamicWatchPatterns) {
+			watchPatterns.addAll(dynamicWatchPatterns);
+		}
+		return Collections.unmodifiableList(watchPatterns);
+	}
+
+	@Override
+	public void syncDeployableWatchPatterns(Collection<DeployableReference> deployables) {
+		LinkedHashSet<String> nextPatterns = new LinkedHashSet<>();
+		if (deployables != null) {
+			for (DeployableReference deployable : deployables) {
+				if (deployable == null || deployable.getPath() == null || deployable.getPath().isBlank()) {
+					continue;
+				}
+				Path deployablePath = Path.of(deployable.getPath()).toAbsolutePath().normalize();
+				Set<Path> watchRoots = wtpService == null
+						? Collections.singleton(deployablePath)
+						: wtpService.getDeploymentWatchPaths(deployablePath, null);
+				for (Path watchRoot : watchRoots) {
+					String pattern = toWatchPattern(watchRoot);
+					if (pattern != null && !pattern.isBlank()) {
+						nextPatterns.add(pattern);
+					}
+				}
+			}
+		}
+		synchronized (dynamicWatchPatterns) {
+			dynamicWatchPatterns.clear();
+			dynamicWatchPatterns.addAll(nextPatterns);
+		}
 	}
 
 	@Override
@@ -511,5 +535,18 @@ public class ProjectsManager implements IProjectsManager {
 		}
 		return new MultiStatus(BUNDLE_ID, IStatus.ERROR,
 				failures.toArray(new IStatus[0]), "One or more projects failed to import", null);
+	}
+
+	private String toWatchPattern(Path path) {
+		if (path == null) {
+			return null;
+		}
+		Path normalized = path.toAbsolutePath().normalize();
+		String unixPath = normalized.toString().replace('\\', '/');
+		if (Files.exists(normalized)) {
+			return Files.isDirectory(normalized) ? unixPath + "/**" : unixPath;
+		}
+		String fileName = normalized.getFileName() == null ? "" : normalized.getFileName().toString();
+		return fileName.contains(".") ? unixPath : unixPath + "/**";
 	}
 }

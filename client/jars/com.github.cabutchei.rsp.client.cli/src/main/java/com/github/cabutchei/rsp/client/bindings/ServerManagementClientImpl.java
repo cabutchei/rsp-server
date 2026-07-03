@@ -25,6 +25,7 @@ import com.github.cabutchei.rsp.api.dao.ServerProcess;
 import com.github.cabutchei.rsp.api.dao.ServerProcessOutput;
 import com.github.cabutchei.rsp.api.dao.ServerState;
 import com.github.cabutchei.rsp.api.dao.StringPrompt;
+import com.github.cabutchei.rsp.api.dao.WatchPatternsChangedParams;
 import com.github.cabutchei.rsp.client.cli.InputHandler;
 import com.github.cabutchei.rsp.client.cli.InputProvider;
 
@@ -255,6 +256,10 @@ public class ServerManagementClientImpl implements RSPWTPClient {
 	public void jobChanged(JobProgress progress) {
 		JobHandle h = progress.getHandle();
 		System.out.println("Job " + h.getName() + " (" + h.getId() + ") is at " + progress.getPercent() + "%");
+	}
+
+	@Override
+	public void watchPatternsChanged(WatchPatternsChangedParams params) {
 	}
 
 }
