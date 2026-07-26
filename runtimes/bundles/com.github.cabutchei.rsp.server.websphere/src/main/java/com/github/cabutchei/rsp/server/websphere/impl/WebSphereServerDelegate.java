@@ -45,14 +45,17 @@ public class WebSphereServerDelegate extends AbstractWebSphereServerDelegate {
 			}
 			org.eclipse.wst.server.core.IServerWorkingCopy wstWorkingCopy =
 					adapter.getAdapter(org.eclipse.wst.server.core.IServerWorkingCopy.class);
-			WASServer wasServer = wstWorkingCopy == null ? null : (WASServer) wstWorkingCopy.loadAdapter(WASServer.class, null);
-			if (wasServer == null) {
-				throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
-						"Unable to load WebSphere server adapter"));
-			}
 			String profileName = workingCopy.getAttribute(IWebSphereServerAttributes.WEBSPHERE_PROFILE, "AppSrv01");
-			wasServer.setWebSphereProfileName(profileName);
-			new ProfileChangeHelper().updateBaseServerForProfileChange(wstWorkingCopy, profileName);
+			WebSphereWstServerAccess.runWithWebSphereContextClassLoader(() -> {
+				WASServer wasServer = wstWorkingCopy == null ? null : (WASServer) wstWorkingCopy.loadAdapter(WASServer.class, null);
+				if (wasServer == null) {
+					throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+							"Unable to load WebSphere server adapter"));
+				}
+				wasServer.setWebSphereProfileName(profileName);
+				new ProfileChangeHelper().updateBaseServerForProfileChange(wstWorkingCopy, profileName);
+				return null;
+			});
 			setJavaLaunchDependentDefaults(workingCopy);
 		} catch (CoreException e) {
 			if (resp != null && resp.getValidation() != null) {
