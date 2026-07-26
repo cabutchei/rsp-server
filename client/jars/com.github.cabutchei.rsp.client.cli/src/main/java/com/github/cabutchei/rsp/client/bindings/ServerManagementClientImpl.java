@@ -262,4 +262,14 @@ public class ServerManagementClientImpl implements RSPWTPClient {
 	public void watchPatternsChanged(WatchPatternsChangedParams params) {
 	}
 
+	@Override
+	public void serverPublishStarted(ServerHandle server) {
+		System.out.println("Publishing started: " + server.getType() + ":" + server.getId());
+	}
+
+	@Override
+	public void serverPublishFinished(ServerHandle server) {
+		System.out.println("Publishing finished: " + server.getType() + ":" + server.getId());
+	}
+
 }

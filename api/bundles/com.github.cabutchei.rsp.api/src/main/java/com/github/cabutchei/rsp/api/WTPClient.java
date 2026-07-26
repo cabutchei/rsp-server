@@ -1,5 +1,6 @@
 package com.github.cabutchei.rsp.api;
 
+import com.github.cabutchei.rsp.api.dao.ServerHandle;
 import com.github.cabutchei.rsp.api.dao.WatchPatternsChangedParams;
 import org.eclipse.lsp4j.jsonrpc.services.JsonNotification;
 import org.eclipse.lsp4j.jsonrpc.services.JsonSegment;
@@ -7,4 +8,10 @@ import org.eclipse.lsp4j.jsonrpc.services.JsonSegment;
 public interface WTPClient {
 	@JsonNotification
 	void watchPatternsChanged(WatchPatternsChangedParams params);
+
+	@JsonNotification
+	void serverPublishStarted(ServerHandle server);
+
+	@JsonNotification
+	void serverPublishFinished(ServerHandle server);
 }
