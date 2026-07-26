@@ -632,7 +632,11 @@ public class WSTServerModel implements IServerModel {
 				}
 			}
 		};
-		String jobName = "Asynchronous Publish for Server " + server.getId();
+		String serverName = server.getName();
+		if (serverName == null || serverName.isBlank()) {
+			serverName = server.getId();
+		}
+		String jobName = "Publishing to " + serverName + "...";
 		this.managementModel.getJobManager().scheduleJob(jobName, irwp);
 		return Status.OK_STATUS;
 	}
