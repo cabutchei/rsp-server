@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
 
+import com.github.cabutchei.rsp.api.dao.DeployableReference;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 
 public interface IProjectsManager extends IWTPServiceProvider {
@@ -69,6 +70,9 @@ public interface IProjectsManager extends IWTPServiceProvider {
 	 * List glob-like watch patterns the client should monitor.
 	 */
 	List<String> getWatchPatterns();
+
+	default void syncDeployableWatchPatterns(Collection<DeployableReference> deployables) {
+	}
 
 	/**
 	 * React to a watched-file change.

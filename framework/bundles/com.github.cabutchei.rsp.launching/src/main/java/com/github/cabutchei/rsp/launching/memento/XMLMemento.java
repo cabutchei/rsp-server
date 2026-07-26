@@ -46,7 +46,6 @@ import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Text;
-import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 /**
@@ -91,7 +90,7 @@ public final class XMLMemento implements IMemento {
 		try {	
 			DocumentBuilderFactory factory = createDocumentBuilderFactory();
 			DocumentBuilder parser = factory.newDocumentBuilder();
-			document = parser.parse(new InputSource(in));
+			document = parser.parse(in);
 			Node node = document.getFirstChild();
 			while( !(node instanceof Element) && node.getNextSibling() != null ) {
 				node = node.getNextSibling();

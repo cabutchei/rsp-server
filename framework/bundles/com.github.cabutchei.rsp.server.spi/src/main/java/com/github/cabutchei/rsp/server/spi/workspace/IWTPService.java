@@ -10,7 +10,10 @@ package com.github.cabutchei.rsp.server.spi.workspace;
 
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.github.cabutchei.rsp.api.dao.ServerHandle;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
@@ -45,5 +48,14 @@ public interface IWTPService extends IWTPConfiguration {
 	IStatus ensureFacets(String projectName, List<String> facetIds);
 
 	IStatus updateFacets(String projectName, List<String> add, List<String> remove);
+
+	default Set<Path> getDeploymentWatchPaths(Path deployablePath, String projectName) {
+		if (deployablePath == null) {
+			return Collections.emptySet();
+		}
+		Set<Path> single = new LinkedHashSet<>();
+		single.add(deployablePath.toAbsolutePath().normalize());
+		return single;
+	}
 
 }
