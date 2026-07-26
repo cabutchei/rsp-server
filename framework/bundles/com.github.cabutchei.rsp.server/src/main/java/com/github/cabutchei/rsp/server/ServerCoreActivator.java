@@ -11,7 +11,6 @@ package com.github.cabutchei.rsp.server;
 import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
 import com.github.cabutchei.rsp.server.spi.model.DelayedExtensionManager;
 import com.github.cabutchei.rsp.server.spi.model.DelayedExtensionManager.IDelayedExtension;
-import com.github.cabutchei.rsp.server.workspace.InitHandlerOptions;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.BundleException;
@@ -27,8 +26,7 @@ public class ServerCoreActivator implements BundleActivator {
 
 	@FunctionalInterface
 	public interface ILauncherFactory {
-		ServerManagementServerLauncher createLauncher(String portString, InitHandlerOptions initHandlerOptions,
-				boolean loadServersOnLaunch);
+		ServerManagementServerLauncher createLauncher(String portString, boolean loadServersOnLaunch);
 	}
 
 	public static void setLauncherFactory(ILauncherFactory factory) {
@@ -59,12 +57,11 @@ public class ServerCoreActivator implements BundleActivator {
 		return RSPFlags.getServerPort();
 	}
 
-	public static ServerManagementServerLauncher createLauncher(String portString,
-			InitHandlerOptions initHandlerOptions, boolean loadServersOnLaunch) {
+	public static ServerManagementServerLauncher createLauncher(String portString, boolean loadServersOnLaunch) {
 		ILauncherFactory factory = launcherFactory;
 		return factory != null
-				? factory.createLauncher(portString, initHandlerOptions, loadServersOnLaunch)
-				: new ServerManagementServerLauncher(portString, initHandlerOptions, loadServersOnLaunch);
+				? factory.createLauncher(portString, loadServersOnLaunch)
+				: new ServerManagementServerLauncher(portString, loadServersOnLaunch);
 	}
 
 	private ServerManagementServerLauncher resolveLauncher(int port) {
@@ -72,8 +69,7 @@ public class ServerCoreActivator implements BundleActivator {
 		if (launcher != null) {
 			return launcher;
 		}
-		ServerManagementServerLauncher created = createLauncher(String.valueOf(port),
-				InitHandlerOptions.externalSocketDefaults(), true);
+		ServerManagementServerLauncher created = createLauncher(String.valueOf(port), true);
 		LauncherSingleton.getDefault().setLauncher(created);
 		return created;
 	}

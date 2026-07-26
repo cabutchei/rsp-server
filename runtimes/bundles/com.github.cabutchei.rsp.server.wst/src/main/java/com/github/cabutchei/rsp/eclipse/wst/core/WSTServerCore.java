@@ -113,8 +113,8 @@ public class WSTServerCore extends Plugin {
 		ServerManagementServerLauncher.setServerManagementModelFactory(new WstServerManagementModelFactory(
 				WST_SERVER_CORE, workspaceService, workspaceInitializationService));
 		ServerCoreActivator.setLauncherFactory(
-				(portString, initHandlerOptions, loadServersOnLaunch) -> new WstServerManagementServerLauncher(
-						portString, initHandlerOptions, loadServersOnLaunch));
+				(portString, loadServersOnLaunch) -> new WstServerManagementServerLauncher(portString,
+						loadServersOnLaunch));
 	}
 
 	@Override

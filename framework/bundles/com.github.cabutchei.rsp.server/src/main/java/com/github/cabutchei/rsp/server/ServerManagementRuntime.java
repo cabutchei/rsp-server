@@ -148,7 +148,7 @@ public class ServerManagementRuntime {
 			int resolvedPort = requestedPort == null ? 0 : requestedPort.intValue();
 			String launcherId = instanceId == null || instanceId.trim().isEmpty() ? "embedded" : instanceId.trim();
 			ServerManagementServerLauncher launcher = ServerCoreActivator.createLauncher(launcherId,
-					resolvedOptions.getInitHandlerOptions(), resolvedOptions.isLoadServersOnBootstrap());
+					resolvedOptions.isLoadServersOnBootstrap());
 			IServerManagementModel model = launcher.getModel();
 			EmbeddedRuntimeLog.append("[embedded] created launcher " + launcher.getClass().getName()
 					+ " with management model " + describeModel(model));

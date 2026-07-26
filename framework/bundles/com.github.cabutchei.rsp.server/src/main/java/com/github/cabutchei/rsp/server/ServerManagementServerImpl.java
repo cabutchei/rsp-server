@@ -117,8 +117,6 @@ import com.github.cabutchei.rsp.server.spi.workspace.DeployableArtifact;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
 import com.github.cabutchei.rsp.server.spi.workspace.IWTPService;
 import com.github.cabutchei.rsp.server.spi.workspace.IWorkspaceInitializationService;
-import com.github.cabutchei.rsp.server.workspace.InitHandler;
-import com.github.cabutchei.rsp.server.workspace.InitHandlerOptions;
 import com.github.cabutchei.rsp.server.workspace.WorkspaceFolderChangeHandler;
 import com.github.cabutchei.rsp.server.workspace.WorkspaceEventsHandler;
 
@@ -137,21 +135,14 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 	
 	private final IServerManagementModel managementModel;
 	private final RemoteEventManager remoteEventManager;
-	private final InitHandler initHandler;
 	private final WorkspaceEventsHandler workspaceEventsHandler;
 	private ServerManagementServerLauncher launcher;
 	
 	public ServerManagementServerImpl(ServerManagementServerLauncher launcher, 
 			IServerManagementModel managementModel) {
-		this(launcher, managementModel, InitHandlerOptions.externalSocketDefaults());
-	}
-
-	public ServerManagementServerImpl(ServerManagementServerLauncher launcher, 
-			IServerManagementModel managementModel, InitHandlerOptions initHandlerOptions) {
 		this.launcher = launcher;
 		this.managementModel = managementModel;
 		this.remoteEventManager = createRemoteEventManager();
-		this.initHandler = new InitHandler(managementModel, this::getProjectsManager, initHandlerOptions);
 		this.workspaceEventsHandler = new WorkspaceEventsHandler(this::getProjectsManager);
 	}
 	
@@ -1116,11 +1107,9 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 
 	@Override
 	public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
-		return createCompletableFuture(() -> initializeSync(params));
-	}
-
-	private InitializeResult initializeSync(InitializeParams params) {
-		return initHandler.initialize(params);
+		return CompletableFuture.completedFuture(new InitializeResult(
+				StatusConverter.convert(com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS),
+				Collections.emptyList()));
 	}
 
 	@Override

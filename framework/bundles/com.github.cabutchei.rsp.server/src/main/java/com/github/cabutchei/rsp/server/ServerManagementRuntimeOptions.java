@@ -8,42 +8,31 @@
  ******************************************************************************/
 package com.github.cabutchei.rsp.server;
 
-import com.github.cabutchei.rsp.server.workspace.InitHandlerOptions;
-
 /**
  * Options for bootstrapping an embedded server-management runtime.
  */
 public class ServerManagementRuntimeOptions {
 	private final boolean loadServersOnBootstrap;
-	private final InitHandlerOptions initHandlerOptions;
 	private final String logFilePath;
 	private final boolean requireWorkspaceModelCapability;
 
-	public ServerManagementRuntimeOptions(boolean loadServersOnBootstrap, InitHandlerOptions initHandlerOptions) {
-		this(loadServersOnBootstrap, initHandlerOptions, null, false);
+	public ServerManagementRuntimeOptions(boolean loadServersOnBootstrap) {
+		this(loadServersOnBootstrap, null, false);
 	}
 
-	public ServerManagementRuntimeOptions(boolean loadServersOnBootstrap, InitHandlerOptions initHandlerOptions,
-			String logFilePath) {
-		this(loadServersOnBootstrap, initHandlerOptions, logFilePath, false);
+	public ServerManagementRuntimeOptions(boolean loadServersOnBootstrap, String logFilePath) {
+		this(loadServersOnBootstrap, logFilePath, false);
 	}
 
-	public ServerManagementRuntimeOptions(boolean loadServersOnBootstrap, InitHandlerOptions initHandlerOptions,
-			String logFilePath, boolean requireWorkspaceModelCapability) {
+	public ServerManagementRuntimeOptions(boolean loadServersOnBootstrap, String logFilePath,
+			boolean requireWorkspaceModelCapability) {
 		this.loadServersOnBootstrap = loadServersOnBootstrap;
-		this.initHandlerOptions = initHandlerOptions == null
-				? InitHandlerOptions.externalSocketDefaults()
-				: initHandlerOptions;
 		this.logFilePath = logFilePath;
 		this.requireWorkspaceModelCapability = requireWorkspaceModelCapability;
 	}
 
 	public boolean isLoadServersOnBootstrap() {
 		return loadServersOnBootstrap;
-	}
-
-	public InitHandlerOptions getInitHandlerOptions() {
-		return initHandlerOptions;
 	}
 
 	public String getLogFilePath() {
@@ -59,7 +48,6 @@ public class ServerManagementRuntimeOptions {
 	}
 
 	public static ServerManagementRuntimeOptions jdtlsOwnedWorkspaceDefaults(String logFilePath) {
-		return new ServerManagementRuntimeOptions(false, InitHandlerOptions.jdtlsOwnedWorkspaceDefaults(), logFilePath,
-				true);
+		return new ServerManagementRuntimeOptions(false, logFilePath, true);
 	}
 }
