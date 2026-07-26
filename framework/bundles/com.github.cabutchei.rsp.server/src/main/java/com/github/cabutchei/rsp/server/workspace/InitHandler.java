@@ -61,8 +61,8 @@ public class InitHandler {
 		if (projectsManager == null) {
 			return new InitializeResult(errorStatus("Projects manager unavailable"), Collections.emptyList());
 		}
-		List<Path> workspaceRoots = toPaths(params == null ? null : params.getWorkspaceFolders());
-		projectsManager.initializeProjects(workspaceRoots);
+		// List<Path> workspaceRoots = toPaths(params == null ? null : params.getWorkspaceFolders());
+		// projectsManager.initializeProjects(workspaceRoots);
 		IStatus autoBuildStatus = configureAutoBuilding();
 		if (!autoBuildStatus.isOK()) {
 			return new InitializeResult(StatusConverter.convert(autoBuildStatus), projectsManager.getWatchPatterns());
@@ -71,11 +71,11 @@ public class InitHandler {
 		if (!autoPublishStatus.isOK()) {
 			return new InitializeResult(StatusConverter.convert(autoPublishStatus), projectsManager.getWatchPatterns());
 		}
-		IStatus loadStatus = ensureServersLoaded();
-		if (!loadStatus.isOK()) {
-			return new InitializeResult(StatusConverter.convert(loadStatus), projectsManager.getWatchPatterns());
-		}
-		projectsManager.syncDeployableWatchPatterns(collectActiveDeployables());
+		// IStatus loadStatus = ensureServersLoaded();
+		// if (!loadStatus.isOK()) {
+		// 	return new InitializeResult(StatusConverter.convert(loadStatus), projectsManager.getWatchPatterns());
+		// }
+		// projectsManager.syncDeployableWatchPatterns(collectActiveDeployables());
 		return new InitializeResult(StatusConverter.convert(com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS),
 				projectsManager.getWatchPatterns());
 	}

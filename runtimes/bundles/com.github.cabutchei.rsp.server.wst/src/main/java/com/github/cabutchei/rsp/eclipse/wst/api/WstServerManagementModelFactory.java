@@ -17,7 +17,7 @@ public class WstServerManagementModelFactory implements IServerManagementModelFa
 	private final IWorkspaceInitializationService workspaceInitializationService;
 
 	public WstServerManagementModelFactory() {
-		this(WSTServerCore.getServerManager(), new EclipseWorkspaceService());
+		this(WSTServerCore.getWstServerCore(), new EclipseWorkspaceService());
 	}
 
 	public WstServerManagementModelFactory(IWstServerCore serverManager, IWorkspaceService workspaceService) {
