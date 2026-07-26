@@ -255,7 +255,9 @@ public class ServerManagementClientImpl implements RSPWTPClient {
 	@Override
 	public void jobChanged(JobProgress progress) {
 		JobHandle h = progress.getHandle();
-		System.out.println("Job " + h.getName() + " (" + h.getId() + ") is at " + progress.getPercent() + "%");
+		String msg = progress.getMessage();
+		String suffix = (msg == null || msg.trim().isEmpty()) ? "" : " [" + msg + "]";
+		System.out.println("Job " + h.getName() + " (" + h.getId() + ") is at " + progress.getPercent() + "%" + suffix);
 	}
 
 	@Override

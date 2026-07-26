@@ -34,6 +34,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.NullProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerCore;
+import com.github.cabutchei.rsp.eclipse.wst.model.delegate.AbstractWstServerDelegate;
 import com.github.cabutchei.rsp.eclipse.wst.model.launch.ServerLaunchMonitor;
 import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerAdapter;
 import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerWorkingCopyAdapter;
@@ -627,6 +628,14 @@ public class WSTServerModel implements IServerModel {
 	private IServerDelegate getServerDelegate(IServer server) {
 		return serverDelegates.get(server.getId());
 	}
+
+	private IStatus publish(IServer server, int kind, IProgressMonitor monitor) {
+		IServerDelegate delegate = getServerDelegate(server);
+		if (delegate instanceof AbstractWstServerDelegate) {
+			return ((AbstractWstServerDelegate) delegate).publish(kind, monitor);
+		}
+		return delegate.publish(kind);
+	}
 	
 	@Override
 	public IStatus publishAsync(IServer server, int kind) throws CoreException {
@@ -640,7 +649,7 @@ public class WSTServerModel implements IServerModel {
 			public IStatus run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
 				ClientThreadLocal.setActiveClient(rspc);
 				try {
-					return getServerDelegate(server).publish(kind);
+					return publish(server, kind, monitor);
 				} finally {
 					ClientThreadLocal.setActiveClient(null);
 				}

@@ -12,7 +12,9 @@ import com.github.cabutchei.rsp.api.dao.ServerState;
 import com.github.cabutchei.rsp.api.dao.StartServerResponse;
 import com.github.cabutchei.rsp.api.dao.UpdateServerResponse;
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.NullProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Path;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
@@ -47,7 +49,12 @@ public class EapServerDelegate extends AbstractWstServerDelegate implements ISer
 
 	@Override
 	public IStatus publish(int publishRequestType) {
-		IStatus status = super.publish(publishRequestType);
+		return publish(publishRequestType, new NullProgressMonitor());
+	}
+
+	@Override
+	public IStatus publish(int publishRequestType, IProgressMonitor monitor) {
+		IStatus status = super.publish(publishRequestType, monitor);
 		if (status != null && status.isOK()) {
 			// getPublishController().publishFinished(publishRequestType,
 			// 		getServerPublishModel().getDeployableStatesWithOptions(),

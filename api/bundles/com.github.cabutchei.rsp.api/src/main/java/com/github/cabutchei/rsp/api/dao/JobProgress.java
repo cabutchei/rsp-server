@@ -11,13 +11,19 @@ package com.github.cabutchei.rsp.api.dao;
 public class JobProgress {
 	private double percent;
 	private JobHandle handle;
+	private String message;
 
 	public JobProgress() { 
 		
 	}
 	public JobProgress( JobHandle handle, double percent) {
+		this(handle, percent, null);
+	}
+
+	public JobProgress(JobHandle handle, double percent, String message) {
 		this.handle = handle;
 		this.percent = percent;
+		this.message = message;
 	}
 
 	public double getPercent() {
@@ -34,5 +40,13 @@ public class JobProgress {
 
 	public void setHandle(JobHandle handle) {
 		this.handle = handle;
+	}
+
+	public String getMessage() {
+		return message;
+	}
+
+	public void setMessage(String message) {
+		this.message = message;
 	}
 }

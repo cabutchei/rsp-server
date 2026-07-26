@@ -143,14 +143,16 @@ public class StandardCommandHandler implements InputHandler {
 			}
 
 			@Override
-			public void execute(String command, ServerManagementClientLauncher launcher, PromptAssistant assistant) throws Exception {
-				List<JobProgress> list = launcher.getServerProxy().getJobs().get();
-				int i = 1;
-				for( JobProgress jp : list ) {
-					System.out.println(i++ + ": " + jp.getHandle().getId() + " [" + jp.getHandle().getName() + ", " + jp.getPercent() + "%]");
+				public void execute(String command, ServerManagementClientLauncher launcher, PromptAssistant assistant) throws Exception {
+					List<JobProgress> list = launcher.getServerProxy().getJobs().get();
+					int i = 1;
+					for( JobProgress jp : list ) {
+						String msg = jp.getMessage();
+						String suffix = (msg == null || msg.trim().isEmpty()) ? "" : ", " + msg;
+						System.out.println(i++ + ": " + jp.getHandle().getId() + " [" + jp.getHandle().getName() + ", " + jp.getPercent() + "%" + suffix + "]");
+					}
 				}
-			}
-		},
+			},
 		CANCEL_JOB("cancel job") {
 			@Override
 			public boolean isMatching(String command) {

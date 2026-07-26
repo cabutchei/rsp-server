@@ -1448,7 +1448,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		List<JobProgress> ret = new ArrayList<>();
 		JobProgress jp = null;
 		for( IJob i : jobs ) {
-			jp = new JobProgress(new JobHandle(i.getName(), i.getId()), i.getProgress());
+			jp = new JobProgress(new JobHandle(i.getName(), i.getId()), i.getProgress(), i.getProgressMessage());
 			ret.add(jp);
 		}
 		return ret;

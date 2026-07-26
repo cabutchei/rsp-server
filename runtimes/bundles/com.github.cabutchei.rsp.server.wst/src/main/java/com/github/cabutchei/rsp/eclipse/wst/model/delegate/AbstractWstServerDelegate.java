@@ -7,7 +7,9 @@ import java.util.function.IntConsumer;
 import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
 import com.github.cabutchei.rsp.api.dao.DeployableReference;
 import com.github.cabutchei.rsp.api.dao.ModuleState;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.NullProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
 import com.github.cabutchei.rsp.eclipse.debug.core.IStreamListener;
@@ -108,7 +110,11 @@ public abstract class AbstractWstServerDelegate extends AbstractServerDelegate i
 
 	@Override
 	public IStatus publish(int publishRequestType) {
-		IStatus status = wstServerControl.publish(publishRequestType);
+		return publish(publishRequestType, new NullProgressMonitor());
+	}
+
+	public IStatus publish(int publishRequestType, IProgressMonitor monitor) {
+		IStatus status = wstServerControl.publish(publishRequestType, monitor);
 		if (status != null && status.isOK() && getServerPublishModel() instanceof WSTServerPublishStateModel) {
 			((WSTServerPublishStateModel) getServerPublishModel()).markPublished();
 		}
