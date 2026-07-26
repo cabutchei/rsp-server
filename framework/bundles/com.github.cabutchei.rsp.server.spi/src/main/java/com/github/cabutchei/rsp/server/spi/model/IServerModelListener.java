@@ -26,4 +26,8 @@ public interface IServerModelListener {
 	
 	void serverProcessOutputAppended(ServerHandle server, String processId, int streamType, String text);
 
+	void serverPublishStarted(ServerHandle server);
+
+	void serverPublishFinished(ServerHandle server);
+
 }

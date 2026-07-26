@@ -32,6 +32,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstPublishListener;
 import com.github.cabutchei.rsp.eclipse.wst.adapter.WstRspMapper;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerControl;
 import com.github.cabutchei.rsp.launching.memento.IMemento;
@@ -856,6 +857,22 @@ public class WstServerAdapter implements IWstServerControl {
 			}
 		};
 		this.wstServer.addServerListener(wrapper);
+	}
+
+	@Override
+	public void addPublishListener(IWstPublishListener listener) {
+		org.eclipse.wst.server.core.IPublishListener wrapper = new org.eclipse.wst.server.core.util.PublishAdapter() {
+			@Override
+			public void publishStarted(org.eclipse.wst.server.core.IServer server) {
+				listener.publishStarted();
+			}
+
+			@Override
+			public void publishFinished(org.eclipse.wst.server.core.IServer server, org.eclipse.core.runtime.IStatus status) {
+				listener.publishFinished();
+			}
+		};
+		this.wstServer.addPublishListener(wrapper);
 	}
 
 }

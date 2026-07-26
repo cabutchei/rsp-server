@@ -56,5 +56,7 @@ public interface IWstServerControl extends IServer {
 
 	void addServerListener(IServerListener listener);
 
+	void addPublishListener(IWstPublishListener listener);
+
 	String getMode();
 }

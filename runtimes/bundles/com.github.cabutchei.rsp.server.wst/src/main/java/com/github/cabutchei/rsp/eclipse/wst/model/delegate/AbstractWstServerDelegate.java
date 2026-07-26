@@ -12,6 +12,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
 import com.github.cabutchei.rsp.eclipse.debug.core.IStreamListener;
 import com.github.cabutchei.rsp.eclipse.debug.core.model.IProcess;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstPublishListener;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerControl;
 import com.github.cabutchei.rsp.eclipse.wst.model.launch.WstLaunchStreamAttacher;
 import com.github.cabutchei.rsp.eclipse.wst.publishing.WSTServerPublishStateModel;
@@ -44,12 +45,28 @@ public abstract class AbstractWstServerDelegate extends AbstractServerDelegate i
 			syncRunStateFromControl(true);
 		}
 	};
+	private final IWstPublishListener publishListener = new IWstPublishListener() {
+		@Override
+		public void publishStarted() {
+			if (getServer() != null && getServer().getServerModel() != null) {
+				getServer().getServerModel().fireServerPublishStarted(getServer());
+			}
+		}
+
+		@Override
+		public void publishFinished() {
+			if (getServer() != null && getServer().getServerModel() != null) {
+				getServer().getServerModel().fireServerPublishFinished(getServer());
+			}
+		}
+	};
 
 	protected AbstractWstServerDelegate(IServer server) {
 		super(server);
 		this.wstServerControl = adaptWstServerControl(server);
 		this.launchStreamAttacher = new WstLaunchStreamAttacher(server.getId(), this::handleLaunchReady);
 		registerWstStateListener();
+		registerWstPublishListener();
 		syncRunStateFromControl(false);
 	}
 
@@ -127,6 +144,10 @@ public abstract class AbstractWstServerDelegate extends AbstractServerDelegate i
 
 	private void registerWstStateListener() {
 		wstServerControl.addServerListener(serverStateListener);
+	}
+
+	private void registerWstPublishListener() {
+		wstServerControl.addPublishListener(publishListener);
 	}
 
 	private void syncRunStateFromControl(boolean fire) {

@@ -16,6 +16,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.wst.adapter.WstRspMapper;
+import com.github.cabutchei.rsp.eclipse.wst.api.IWstPublishListener;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerControl;
 import com.github.cabutchei.rsp.server.ServerCoreActivator;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
@@ -395,6 +396,11 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IWstServ
 
 	@Override
 	public void addServerListener(IServerListener listener) {
+		// no-op for working copies
+	}
+
+	@Override
+	public void addPublishListener(IWstPublishListener listener) {
 		// no-op for working copies
 	}
 

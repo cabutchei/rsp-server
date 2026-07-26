@@ -185,4 +185,20 @@ public class RemoteEventManager implements IDiscoveryPathListener,
 			c.jobChanged(progress);
 		}
 	}
+
+	@Override
+	public void serverPublishStarted(ServerHandle serverHandle) {
+		List<RSPWTPClient> clients = server.getClients();
+		for (RSPWTPClient client : clients) {
+			client.serverPublishStarted(serverHandle);
+		}
+	}
+
+	@Override
+	public void serverPublishFinished(ServerHandle serverHandle) {
+		List<RSPWTPClient> clients = server.getClients();
+		for (RSPWTPClient client : clients) {
+			client.serverPublishFinished(serverHandle);
+		}
+	}
 }

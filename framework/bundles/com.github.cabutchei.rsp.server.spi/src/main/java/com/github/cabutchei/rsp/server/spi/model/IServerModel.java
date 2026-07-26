@@ -69,6 +69,10 @@ public interface IServerModel {
 
 	void fireServerStreamAppended(IServer server2, String processId, int streamType, String text);
 
+	void fireServerPublishStarted(IServer server);
+
+	void fireServerPublishFinished(IServer server);
+
 	void addServerModelListener(IServerModelListener listener);
 	void removeServerModelListener(IServerModelListener l);
 

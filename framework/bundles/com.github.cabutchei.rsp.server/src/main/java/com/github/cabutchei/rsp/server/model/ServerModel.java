@@ -472,6 +472,20 @@ public class ServerModel implements IServerModel {
 			l.serverProcessOutputAppended(toHandle(server), processId, streamType, text);
 		}
 	}
+
+	@Override
+	public void fireServerPublishStarted(IServer server) {
+		for (IServerModelListener l : getListeners()) {
+			l.serverPublishStarted(toHandle(server));
+		}
+	}
+
+	@Override
+	public void fireServerPublishFinished(IServer server) {
+		for (IServerModelListener l : getListeners()) {
+			l.serverPublishFinished(toHandle(server));
+		}
+	}
 	
 	@Override
 	public void fireServerStateChanged(IServer server, ServerState state) {

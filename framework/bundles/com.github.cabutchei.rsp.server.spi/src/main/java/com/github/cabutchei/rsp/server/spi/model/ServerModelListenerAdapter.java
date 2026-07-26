@@ -41,4 +41,12 @@ public class ServerModelListenerAdapter implements IServerModelListener {
 	public void serverProcessOutputAppended(ServerHandle server, String processId, int streamType, String text) {
 	}
 
+	@Override
+	public void serverPublishStarted(ServerHandle server) {
+	}
+
+	@Override
+	public void serverPublishFinished(ServerHandle server) {
+	}
+
 }
