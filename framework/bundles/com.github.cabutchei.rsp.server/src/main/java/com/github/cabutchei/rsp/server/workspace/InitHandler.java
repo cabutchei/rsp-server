@@ -11,11 +11,15 @@ package com.github.cabutchei.rsp.server.workspace;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
+import com.github.cabutchei.rsp.api.dao.DeployableReference;
+import com.github.cabutchei.rsp.api.dao.DeployableState;
 import com.github.cabutchei.rsp.api.dao.InitializeParams;
 import com.github.cabutchei.rsp.api.dao.InitializeResult;
 import com.github.cabutchei.rsp.api.dao.Status;
@@ -24,6 +28,8 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.server.ServerCoreActivator;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
+import com.github.cabutchei.rsp.server.spi.model.IServerModel;
+import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
 import com.github.cabutchei.rsp.server.spi.workspace.IWTPConfiguration;
@@ -69,8 +75,34 @@ public class InitHandler {
 		if (!loadStatus.isOK()) {
 			return new InitializeResult(StatusConverter.convert(loadStatus), projectsManager.getWatchPatterns());
 		}
+		projectsManager.syncDeployableWatchPatterns(collectActiveDeployables());
 		return new InitializeResult(StatusConverter.convert(com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS),
 				projectsManager.getWatchPatterns());
+	}
+
+	private List<DeployableReference> collectActiveDeployables() {
+		IServerModel serverModel = managementModel == null ? null : managementModel.getServerModel();
+		if (serverModel == null || serverModel.getServers() == null || serverModel.getServers().isEmpty()) {
+			return Collections.emptyList();
+		}
+		Map<String, DeployableReference> deployables = new LinkedHashMap<>();
+		for (IServer server : serverModel.getServers().values()) {
+			if (server == null) {
+				continue;
+			}
+			List<DeployableState> states = serverModel.getDeployables(server);
+			if (states == null) {
+				continue;
+			}
+			for (DeployableState state : states) {
+				DeployableReference reference = state == null ? null : state.getReference();
+				if (reference == null || reference.getPath() == null || reference.getPath().isBlank()) {
+					continue;
+				}
+				deployables.put(reference.getLabel() + "|" + reference.getPath(), new DeployableReference(reference));
+			}
+		}
+		return new ArrayList<>(deployables.values());
 	}
 
 	private IStatus configureAutoBuilding() {
