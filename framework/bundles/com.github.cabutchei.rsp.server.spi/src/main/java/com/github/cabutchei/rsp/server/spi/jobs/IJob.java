@@ -30,6 +30,13 @@ public interface IJob {
 	 * @return
 	 */
 	public double getProgress();
+
+	/**
+	 * Return the most relevant progress message for the current job, or null if
+	 * no task/subtask detail is currently available.
+	 * @return
+	 */
+	public String getProgressMessage();
 	
 	/**
 	 * Cancel the current job

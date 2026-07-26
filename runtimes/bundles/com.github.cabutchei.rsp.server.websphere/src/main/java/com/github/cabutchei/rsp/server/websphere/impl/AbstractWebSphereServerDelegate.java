@@ -19,7 +19,9 @@ import com.github.cabutchei.rsp.api.dao.ServerActionWorkflow;
 import com.github.cabutchei.rsp.api.dao.StartServerResponse;
 import com.github.cabutchei.rsp.api.dao.WorkflowResponse;
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
+import com.github.cabutchei.rsp.eclipse.core.runtime.NullProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.debug.core.ILaunch;
 import com.github.cabutchei.rsp.eclipse.debug.core.model.IProcess;
@@ -110,7 +112,13 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractWstServerD
 
 	@Override
 	public IStatus publish(int publishRequestType) {
-		return WebSphereWstServerAccess.runWithWebSphereContextClassLoader(() -> super.publish(publishRequestType));
+		return publish(publishRequestType, new NullProgressMonitor());
+	}
+
+	@Override
+	public IStatus publish(int publishRequestType, IProgressMonitor monitor) {
+		return WebSphereWstServerAccess.runWithWebSphereContextClassLoader(
+				() -> super.publish(publishRequestType, monitor));
 	}
 
 	@Override

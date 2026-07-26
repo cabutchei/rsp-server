@@ -712,8 +712,13 @@ public class WstServerAdapter implements IWstServerControl {
 
 	@Override
 	public IStatus publish(int publishRequestType) {
+		return publish(publishRequestType, new com.github.cabutchei.rsp.eclipse.core.runtime.NullProgressMonitor());
+	}
+
+	@Override
+	public IStatus publish(int publishRequestType, IProgressMonitor monitor) {
 		org.eclipse.core.runtime.IStatus status = wstServer.publish(
-				WstRspMapper.toWstPublishKind(publishRequestType), new NullProgressMonitor());
+				WstRspMapper.toWstPublishKind(publishRequestType), toWstProgressMonitor(monitor));
 		return WstRspMapper.toRspStatus(status);
 	}
 
@@ -873,6 +878,53 @@ public class WstServerAdapter implements IWstServerControl {
 			}
 		};
 		this.wstServer.addPublishListener(wrapper);
+	}
+
+	private org.eclipse.core.runtime.IProgressMonitor toWstProgressMonitor(IProgressMonitor monitor) {
+		if (monitor == null) {
+			return new org.eclipse.core.runtime.NullProgressMonitor();
+		}
+		return new org.eclipse.core.runtime.IProgressMonitor() {
+			@Override
+			public void beginTask(String name, int totalWork) {
+				monitor.beginTask(name, totalWork);
+			}
+
+			@Override
+			public void done() {
+				monitor.done();
+			}
+
+			@Override
+			public void internalWorked(double work) {
+				monitor.internalWorked(work);
+			}
+
+			@Override
+			public boolean isCanceled() {
+				return monitor.isCanceled();
+			}
+
+			@Override
+			public void setCanceled(boolean value) {
+				monitor.setCanceled(value);
+			}
+
+			@Override
+			public void setTaskName(String name) {
+				monitor.setTaskName(name);
+			}
+
+			@Override
+			public void subTask(String name) {
+				monitor.subTask(name);
+			}
+
+			@Override
+			public void worked(int work) {
+				monitor.worked(work);
+			}
+		};
 	}
 
 }

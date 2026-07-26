@@ -6,6 +6,7 @@ import com.github.cabutchei.rsp.api.dao.DeployableReference;
 import com.github.cabutchei.rsp.api.dao.DeployableState;
 import com.github.cabutchei.rsp.api.dao.ModuleState;
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.server.spi.servertype.IRuntime;
 import com.github.cabutchei.rsp.server.spi.servertype.IServer;
@@ -27,6 +28,8 @@ public interface IWstServerControl extends IServer {
 	IStatus canRemoveDeployable(DeployableReference reference);
 
 	IStatus publish(int publishRequestType);
+
+	IStatus publish(int publishRequestType, IProgressMonitor monitor);
 
 	IStatus canPublish();
 

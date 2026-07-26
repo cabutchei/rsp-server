@@ -179,7 +179,7 @@ public class RemoteEventManager implements IDiscoveryPathListener,
 	}
 	@Override
 	public void progressChanged(IJob job, double work) {
-		JobProgress progress = new JobProgress(new JobHandle(job.getName(), job.getId()), work); 
+		JobProgress progress = new JobProgress(new JobHandle(job.getName(), job.getId()), work, job.getProgressMessage()); 
 		List<RSPWTPClient> l = server.getClients();
 		for( RSPWTPClient c : l) {
 			c.jobChanged(progress);

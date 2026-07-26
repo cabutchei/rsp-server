@@ -58,6 +58,11 @@ public class SimpleJob implements IJob {
 	public double getProgress() {
 		return ((JobProgressMonitor)getProgressMonitor()).getPercentage();
 	}
+
+	@Override
+	public String getProgressMessage() {
+		return ((JobProgressMonitor) getProgressMonitor()).getDisplayMessage();
+	}
 	
 	public synchronized IProgressMonitor getProgressMonitor() {
 		if( monitor == null ) {
@@ -67,6 +72,35 @@ public class SimpleJob implements IJob {
 	}
 	
 	private class JobProgressMonitor extends SimpleProgressMonitor {
+		private String taskName;
+		private String subTaskName;
+
+		@Override
+		public void beginTask(String name, int totalWork) {
+			super.beginTask(name, totalWork);
+			boolean changed = setTaskNameInternal(name);
+			if (changed) {
+				manager.jobWorkChanged(SimpleJob.this);
+			}
+		}
+
+		@Override
+		public void setTaskName(String name) {
+			boolean changed = setTaskNameInternal(name);
+			if (changed) {
+				manager.jobWorkChanged(SimpleJob.this);
+			}
+		}
+
+		@Override
+		public void subTask(String name) {
+			String normalized = normalizeMessage(name);
+			if (!equalsNullable(subTaskName, normalized)) {
+				subTaskName = normalized;
+				manager.jobWorkChanged(SimpleJob.this);
+			}
+		}
+
 		public void worked(int work) {
 			double d = getPercentage();
 			super.worked(work);
@@ -80,6 +114,37 @@ public class SimpleJob implements IJob {
 			super.done();
 			manager.jobWorkChanged(SimpleJob.this);
 		}
+
+		private boolean setTaskNameInternal(String name) {
+			String normalized = normalizeMessage(name);
+			if (equalsNullable(taskName, normalized)) {
+				return false;
+			}
+			taskName = normalized;
+			return true;
+		}
+
+		private String getDisplayMessage() {
+			if (subTaskName != null && !subTaskName.isBlank()) {
+				return subTaskName;
+			}
+			if (taskName != null && !taskName.isBlank() && !taskName.equals(SimpleJob.this.getName())) {
+				return taskName;
+			}
+			return null;
+		}
+	}
+
+	private static boolean equalsNullable(String left, String right) {
+		return left == null ? right == null : left.equals(right);
+	}
+
+	private static String normalizeMessage(String message) {
+		if (message == null) {
+			return null;
+		}
+		String trimmed = message.trim();
+		return trimmed.isEmpty() ? null : trimmed;
 	}
 	
 	public IStatus run() {

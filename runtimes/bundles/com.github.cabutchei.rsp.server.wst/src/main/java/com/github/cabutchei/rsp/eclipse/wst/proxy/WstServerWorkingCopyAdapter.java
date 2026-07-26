@@ -330,6 +330,11 @@ public class WstServerWorkingCopyAdapter implements IServerWorkingCopy, IWstServ
 	}
 
 	@Override
+	public IStatus publish(int publishRequestType, IProgressMonitor monitor) {
+		return unsupported("publish");
+	}
+
+	@Override
 	public IStatus canPublish() {
 		return unsupported("canPublish");
 	}
