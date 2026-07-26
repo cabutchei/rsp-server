@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  */
 public class WSTServerCore extends Plugin {
 	private static final Logger LOG = LoggerFactory.getLogger(WSTServerCore.class);
-	private static final IWstServerCore SERVER_MANAGER = new WstServerCoreService();
+	private static final IWstServerCore WST_SERVER_CORE = new WstServerCoreService();
 	private static WSTServerCore plugin;
 
 	private IWorkspaceService workspaceService;
@@ -44,17 +44,17 @@ public class WSTServerCore extends Plugin {
 		return plugin;
 	}
 
-	public static IWstServerCore getServerManager() {
-		return SERVER_MANAGER;
+	public static IWstServerCore getWstServerCore() {
+		return WST_SERVER_CORE;
 	}
 
 	public static IServer[] loadServers(IServerManagementModel managementModel) {
-		return SERVER_MANAGER.loadServers(managementModel);
+		return WST_SERVER_CORE.loadServers(managementModel);
 	}
 
 	public static IServerWorkingCopy createServer(IServerType serverType, String id, Map<String, Object> attributes,
 			IServerManagementModel model) throws CoreException {
-		return SERVER_MANAGER.createServer(serverType, id, attributes, model);
+		return WST_SERVER_CORE.createServer(serverType, id, attributes, model);
 	}
 
 	public static org.eclipse.wst.server.core.IRuntimeWorkingCopy createRuntimeWorkingCopy(IRuntimeType runtimeType,
@@ -74,15 +74,15 @@ public class WSTServerCore extends Plugin {
 	}
 
 	public static void updateServerStatus() {
-		SERVER_MANAGER.updateServerStatus();
+		WST_SERVER_CORE.updateServerStatus();
 	}
 
 	public static IStatus setGlobalAutoPublishing(boolean enabled) {
-		return ((WstServerCoreService) SERVER_MANAGER).setGlobalAutoPublishing(enabled);
+		return ((WstServerCoreService) WST_SERVER_CORE).setGlobalAutoPublishing(enabled);
 	}
 
 	public static IStatus setAutoPublishingForAllServers(boolean enabled) {
-		return ((WstServerCoreService) SERVER_MANAGER).setAutoPublishingForAllServers(enabled);
+		return ((WstServerCoreService) WST_SERVER_CORE).setAutoPublishingForAllServers(enabled);
 	}
 
 	@Override
@@ -111,7 +111,7 @@ public class WSTServerCore extends Plugin {
 		};
 		ServerCore.addRuntimeLifecycleListener(runtimeLifecycleListener);
 		ServerManagementServerLauncher.setServerManagementModelFactory(new WstServerManagementModelFactory(
-				SERVER_MANAGER, workspaceService, workspaceInitializationService));
+				WST_SERVER_CORE, workspaceService, workspaceInitializationService));
 		ServerCoreActivator.setLauncherFactory(
 				(portString, initHandlerOptions, loadServersOnLaunch) -> new WstServerManagementServerLauncher(
 						portString, initHandlerOptions, loadServersOnLaunch));
