@@ -24,7 +24,6 @@ import com.github.cabutchei.rsp.server.persistence.DataLocationCore;
 import com.github.cabutchei.rsp.server.spi.client.ClientThreadLocal;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModel;
 import com.github.cabutchei.rsp.server.spi.model.IServerManagementModelFactory;
-import com.github.cabutchei.rsp.server.workspace.InitHandlerOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,20 +66,15 @@ public class ServerManagementServerLauncher {
 	protected ServerManagementRuntime runtime;
 	private ListenOnSocketRunnable socketRunnable;
 	private ServerSocket serverSocket;
-	private final InitHandlerOptions initHandlerOptions;
 	private final boolean loadServersOnLaunch;
 	private int boundPort;
 	protected String portString;
 	public ServerManagementServerLauncher(String portString) {
-		this(portString, InitHandlerOptions.externalSocketDefaults(), true);
+		this(portString, true);
 	}
 
-	public ServerManagementServerLauncher(String portString, InitHandlerOptions initHandlerOptions,
-			boolean loadServersOnLaunch) {
+	public ServerManagementServerLauncher(String portString, boolean loadServersOnLaunch) {
 		this.portString = portString;
-		this.initHandlerOptions = initHandlerOptions == null
-				? InitHandlerOptions.externalSocketDefaults()
-				: initHandlerOptions;
 		this.loadServersOnLaunch = loadServersOnLaunch;
 		this.boundPort = -1;
 		this.serverImpl = createImpl();
@@ -92,7 +86,7 @@ public class ServerManagementServerLauncher {
 		DataLocationCore dlc = new DataLocationCore(this.portString);
 		if( !dlc.isInUse()) {
 			// dlc.lock();
-			return new ServerManagementServerImpl(this, createServerManagementModel(dlc), initHandlerOptions);
+			return new ServerManagementServerImpl(this, createServerManagementModel(dlc));
 		}
 		throw new RuntimeException("Workspace is locked. Please verify workspace is not in use, or, remove the .lock file at " + dlc.getDataLocation().getAbsolutePath() + "/.lock");
 	}
@@ -259,11 +253,6 @@ public class ServerManagementServerLauncher {
 	public int getBoundPort() {
 		return boundPort;
 	}
-
-	protected InitHandlerOptions getInitHandlerOptions() {
-		return initHandlerOptions;
-	}
-	
 
 	private void closeAllConnections() {
 		List<SocketLauncher<RSPWTPClient>> all = 

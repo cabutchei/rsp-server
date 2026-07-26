@@ -42,7 +42,9 @@ final class WstServerCoreService implements IWstServerCore {
 
 	@Override
 	public IServer[] loadServers(IServerManagementModel managementModel) {
-		return createServerProxies(ServerCore.getServers(), managementModel);
+		org.eclipse.wst.server.core.IServer[] wstServers = ServerCore.getServers();
+		disableAutoPublishing(wstServers);
+		return createServerProxies(wstServers, managementModel);
 	}
 
 	@Override
@@ -177,6 +179,27 @@ final class WstServerCoreService implements IWstServerCore {
 			proxy.setDelegate(delegate);
 		}
 		return proxy;
+	}
+
+	private void disableAutoPublishing(org.eclipse.wst.server.core.IServer[] servers) {
+		if (servers == null || servers.length == 0) {
+			return;
+		}
+		IProgressMonitor monitor = new NullProgressMonitor();
+		for (org.eclipse.wst.server.core.IServer server : servers) {
+			if (server == null) {
+				continue;
+			}
+			try {
+				org.eclipse.wst.server.core.IServerWorkingCopy wc = server.createWorkingCopy();
+				if (wc.getAttribute(PROP_AUTO_PUBLISH_SETTING, AUTO_PUBLISH_RESOURCE) != AUTO_PUBLISH_DISABLE) {
+					wc.setAttribute(PROP_AUTO_PUBLISH_SETTING, AUTO_PUBLISH_DISABLE);
+					wc.save(false, monitor);
+				}
+			} catch (org.eclipse.core.runtime.CoreException e) {
+				LOG.warn("Failed to disable auto-publish for loaded server {}", server.getId(), e);
+			}
+		}
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
