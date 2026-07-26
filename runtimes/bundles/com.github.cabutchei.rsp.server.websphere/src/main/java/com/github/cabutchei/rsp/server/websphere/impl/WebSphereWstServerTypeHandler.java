@@ -67,13 +67,16 @@ final class WebSphereWstServerTypeHandler implements WstServerTypeHandler {
 	private void configureWebSphereProfile(org.eclipse.wst.server.core.IServerWorkingCopy server,
 			Map<String, Object> attributes) throws CoreException {
 		String profileName = attributes == null ? null : (String) attributes.get(PROFILE_ATTRIBUTE);
-		WASServer wasServer = server == null ? null : (WASServer) server.loadAdapter(WASServer.class, null);
-		if( wasServer == null ) {
-			throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
-					"Unable to load WebSphere server adapter"));
-		}
-		wasServer.setWebSphereProfileName(profileName);
-		new ProfileChangeHelper().updateBaseServerForProfileChange(server, profileName);
+		WebSphereWstServerAccess.runWithWebSphereContextClassLoader(() -> {
+			WASServer wasServer = server == null ? null : (WASServer) server.loadAdapter(WASServer.class, null);
+			if( wasServer == null ) {
+				throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+						"Unable to load WebSphere server adapter"));
+			}
+			wasServer.setWebSphereProfileName(profileName);
+			new ProfileChangeHelper().updateBaseServerForProfileChange(server, profileName);
+			return null;
+		});
 	}
 
 	private String getStringAttribute(Map<String, Object> attributes, String key, String defaultValue) {

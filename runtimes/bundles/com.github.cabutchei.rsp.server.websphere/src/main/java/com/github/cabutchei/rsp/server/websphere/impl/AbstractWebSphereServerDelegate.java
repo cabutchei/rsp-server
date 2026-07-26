@@ -104,6 +104,16 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractWstServerD
 	}
 
 	@Override
+	public IStatus canPublish() {
+		return WebSphereWstServerAccess.runWithWebSphereContextClassLoader(super::canPublish);
+	}
+
+	@Override
+	public IStatus publish(int publishRequestType) {
+		return WebSphereWstServerAccess.runWithWebSphereContextClassLoader(() -> super.publish(publishRequestType));
+	}
+
+	@Override
 	public IStatus stop(boolean force) {
 		resetLaunchAttacher();
 		resetDebugPortFuture();

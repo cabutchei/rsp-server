@@ -69,10 +69,10 @@ public final class WebSphereWstServerAccess implements IWstServerDelegateAccess<
 	}
 
 	public static ServerXmlFileHandler createServerXmlFileHandler(String curWASInstallRoot, String profileName, String serverName) throws IOException {
-		return withWebSphereContextClassLoader(() -> ServerXmlFileHandler.create(curWASInstallRoot, profileName, serverName));
+		return runWithWebSphereContextClassLoader(() -> ServerXmlFileHandler.create(curWASInstallRoot, profileName, serverName));
 	}
 
-	private static <T, E extends Exception> T withWebSphereContextClassLoader(ThrowingSupplier<T, E> supplier) throws E {
+	public static <T, E extends Exception> T runWithWebSphereContextClassLoader(ThrowingSupplier<T, E> supplier) throws E {
 		ClassLoader original = Thread.currentThread().getContextClassLoader();
 		ClassLoader websphereLoader = getWebSphereContextClassLoader();
 		if (websphereLoader == null || websphereLoader == original) {
@@ -84,6 +84,10 @@ public final class WebSphereWstServerAccess implements IWstServerDelegateAccess<
 		} finally {
 			Thread.currentThread().setContextClassLoader(original);
 		}
+	}
+
+	private static <T, E extends Exception> T withWebSphereContextClassLoader(ThrowingSupplier<T, E> supplier) throws E {
+		return runWithWebSphereContextClassLoader(supplier);
 	}
 
 	private static ClassLoader getWebSphereContextClassLoader() {
@@ -167,7 +171,14 @@ public final class WebSphereWstServerAccess implements IWstServerDelegateAccess<
 	}
 
 	public static int getAdminConsolePortNum(IServerAttributes server) throws CoreException {
-		return server.getAdapter(AbstractWASServerBehaviour.class).getAdminConsolePortNum();
+		return runWithWebSphereContextClassLoader(() -> {
+			AbstractWASServerBehaviour behaviour = server.getAdapter(AbstractWASServerBehaviour.class);
+			if (behaviour == null) {
+				throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+						"Unable to load WebSphere server behaviour"));
+			}
+			return behaviour.getAdminConsolePortNum();
+		});
 	}
 
 	public static String getServerXmlFilePath(IServerAttributes server) throws IOException, CoreException {
@@ -255,7 +266,7 @@ public final class WebSphereWstServerAccess implements IWstServerDelegateAccess<
 	}
 
 	@FunctionalInterface
-	private interface ThrowingSupplier<T, E extends Exception> {
+	public interface ThrowingSupplier<T, E extends Exception> {
 		T get() throws E;
 	}
 }
