@@ -9,6 +9,7 @@
 package com.github.cabutchei.rsp.server;
 
 import java.io.File;
+import java.net.URI;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -84,6 +85,7 @@ import com.github.cabutchei.rsp.api.dao.StopServerAttributes;
 import com.github.cabutchei.rsp.api.dao.UpdateServerRequest;
 import com.github.cabutchei.rsp.api.dao.UpdateServerResponse;
 import com.github.cabutchei.rsp.api.dao.WatchPatternsChangedParams;
+import com.github.cabutchei.rsp.api.dao.WorkspaceFolder;
 import com.github.cabutchei.rsp.api.dao.WorkspaceProject;
 import com.github.cabutchei.rsp.api.dao.WorkflowResponse;
 import com.github.cabutchei.rsp.api.dao.util.CreateServerAttributesUtility;
@@ -1107,9 +1109,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 
 	@Override
 	public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
-		return CompletableFuture.completedFuture(new InitializeResult(
-				StatusConverter.convert(com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS),
-				Collections.emptyList()));
+		return CompletableFuture.completedFuture(initializeSync(params));
 	}
 
 	@Override
@@ -1142,6 +1142,67 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 
 	private boolean isEmpty(String s) {
 		return s == null || s.isEmpty();
+	}
+
+	private InitializeResult initializeSync(InitializeParams params) {
+		IProjectsManager projectsManager = getProjectsManager();
+		if (projectsManager == null) {
+			return new InitializeResult(errorStatus("Projects manager unavailable"), Collections.emptyList());
+		}
+
+		List<java.nio.file.Path> workspaceRoots = toWorkspacePaths(params == null ? null : params.getWorkspaceFolders());
+		projectsManager.initializeProjects(workspaceRoots);
+
+		if (shouldLoadServers()) {
+			try {
+				managementModel.getServerModel().loadServers();
+			} catch (CoreException e) {
+				return new InitializeResult(StatusConverter.convert(e.getStatus()), projectsManager.getWatchPatterns());
+			}
+		}
+
+		return new InitializeResult(
+				StatusConverter.convert(com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS),
+				projectsManager.getWatchPatterns());
+	}
+
+	private boolean shouldLoadServers() {
+		return managementModel != null
+				&& managementModel.getServerModel() != null
+				&& (managementModel.getServerModel().getServers() == null
+						|| managementModel.getServerModel().getServers().isEmpty());
+	}
+
+	private List<java.nio.file.Path> toWorkspacePaths(List<WorkspaceFolder> folders) {
+		if (folders == null || folders.isEmpty()) {
+			return Collections.emptyList();
+		}
+		List<java.nio.file.Path> paths = new ArrayList<>();
+		for (WorkspaceFolder folder : folders) {
+			java.nio.file.Path path = toWorkspacePath(folder);
+			if (path != null) {
+				paths.add(path);
+			}
+		}
+		return paths;
+	}
+
+	private java.nio.file.Path toWorkspacePath(WorkspaceFolder folder) {
+		if (folder == null || isEmpty(folder.getUri())) {
+			return null;
+		}
+		try {
+			URI parsed = new URI(folder.getUri());
+			if (parsed.getScheme() == null) {
+				return Paths.get(folder.getUri()).toAbsolutePath().normalize();
+			}
+			if ("file".equalsIgnoreCase(parsed.getScheme())) {
+				return Paths.get(parsed).toAbsolutePath().normalize();
+			}
+		} catch (Exception e) {
+			return null;
+		}
+		return null;
 	}
 
 	private Status invalidParameterStatus() {
