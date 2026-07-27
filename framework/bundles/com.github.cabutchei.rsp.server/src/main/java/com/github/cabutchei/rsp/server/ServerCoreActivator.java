@@ -13,7 +13,6 @@ import com.github.cabutchei.rsp.server.spi.model.DelayedExtensionManager;
 import com.github.cabutchei.rsp.server.spi.model.DelayedExtensionManager.IDelayedExtension;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.BundleException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,11 +21,10 @@ public class ServerCoreActivator implements BundleActivator {
 	public static final String BUNDLE_ID = "com.github.cabutchei.rsp.server";
 	private static final Logger LOG = LoggerFactory.getLogger(ServerCoreActivator.class);
 	private static volatile ILauncherFactory launcherFactory;
-	private BundleContext context;
 
 	@FunctionalInterface
 	public interface ILauncherFactory {
-		ServerManagementServerLauncher createLauncher(String portString, boolean loadServersOnLaunch);
+		ServerManagementServerLauncher createLauncher(String portString);
 	}
 
 	public static void setLauncherFactory(ILauncherFactory factory) {
@@ -39,63 +37,15 @@ public class ServerCoreActivator implements BundleActivator {
 
 	@Override
 	public void start(final BundleContext context) throws Exception {
-		this.context = context;
-		ShutdownExecutor.getExecutor().setHandler(() -> { performStop(); });
-		if (RSPFlags.isServerAutostartEnabled()) {
-			startServer();
-		} else {
-			LOG.info("RSP bundle activated with auto-start disabled.");
-		}
+		LOG.info("RSP bundle activated. Startup is managed exclusively by the embedded runtime.");
 		LOG.debug(NLS.bind("{0} bundle started.", BUNDLE_ID));
 	}
 
-	public ServerManagementServerLauncher getLauncher() {
-		return LauncherSingleton.getDefault().getLauncher();
-	}
-
-	private int getPort() {
-		return RSPFlags.getServerPort();
-	}
-
-	public static ServerManagementServerLauncher createLauncher(String portString, boolean loadServersOnLaunch) {
+	public static ServerManagementServerLauncher createLauncher(String portString) {
 		ILauncherFactory factory = launcherFactory;
 		return factory != null
-				? factory.createLauncher(portString, loadServersOnLaunch)
-				: new ServerManagementServerLauncher(portString, loadServersOnLaunch);
-	}
-
-	private ServerManagementServerLauncher resolveLauncher(int port) {
-		ServerManagementServerLauncher launcher = LauncherSingleton.getDefault().getLauncher();
-		if (launcher != null) {
-			return launcher;
-		}
-		ServerManagementServerLauncher created = createLauncher(String.valueOf(port), true);
-		LauncherSingleton.getDefault().setLauncher(created);
-		return created;
-	}
-
-	private void startServer() {
-		int port = getPort();
-		ServerManagementServerLauncher launcher = null;
-		
-		try {
-			launcher = resolveLauncher(port);
-		} catch(RuntimeException re) {
-			LOG.error("Unable to launch RSP server", re);
-			performStop();
-			return;
-		}
-		ServerManagementServerLauncher launcher2 = launcher;
-		Thread serverThread = new Thread(() -> {
-				addDelayedExtensionsToModel();
-				try {
-					launcher2.launch(port);
-				} catch (Exception e) {
-					LOG.error("Unable to launch RSP server", e);
-				}
-			}, 
-			"Launch RSP Server");
-		serverThread.start();
+				? factory.createLauncher(portString)
+				: new ServerManagementServerLauncher(portString);
 	}
 
 	public static void addDelayedExtensionsToModel() {
@@ -105,13 +55,6 @@ public class ServerCoreActivator implements BundleActivator {
 		}
 	}
 
-	private void performStop() {
-		try {
-			context.getBundle(0).stop();
-		} catch (BundleException e) {
-			LOG.error(NLS.bind("Stopping bundle {0} failed.", BUNDLE_ID), e);
-		}
-	}
 	@Override
 	public void stop(BundleContext context) throws Exception {
 		LOG.debug(NLS.bind("{0} bundle stopped.", BUNDLE_ID));

@@ -19,7 +19,6 @@ import com.github.cabutchei.rsp.server.model.AbstractServerDelegate;
 import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
 
 import com.github.cabutchei.rsp.server.websphere.impl.AbstractWebSphereServerDelegate;
-import com.github.cabutchei.rsp.server.websphere.impl.Activator;
 import com.github.cabutchei.rsp.server.websphere.impl.WebSphereWstServerAccess;
 
 import com.ibm.ws.ast.st.v85.core.internal.util.ServerXmlFileHandler;
@@ -47,7 +46,7 @@ public class WebSphereEditServerConfigurationActionHandler {
 		String configFilePath = getConfigurationFile();
 		if (configFilePath == null || !(new File(configFilePath).exists())) {
 			workflow.setStatus(StatusConverter.convert(
-					new Status(IStatus.CANCEL, Activator.BUNDLE_ID, ACTION_LABEL)));
+					new Status(IStatus.CANCEL, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID, ACTION_LABEL)));
 			return action;
 		}
 
@@ -61,7 +60,7 @@ public class WebSphereEditServerConfigurationActionHandler {
 		items.add(item);
 
 		workflow.setStatus(StatusConverter.convert(
-				new Status(IStatus.OK, Activator.BUNDLE_ID, ACTION_LABEL)));
+				new Status(IStatus.OK, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID, ACTION_LABEL)));
 		return action;
 	}
 

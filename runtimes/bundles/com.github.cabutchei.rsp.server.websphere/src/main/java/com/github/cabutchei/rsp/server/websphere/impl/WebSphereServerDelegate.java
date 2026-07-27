@@ -40,7 +40,7 @@ public class WebSphereServerDelegate extends AbstractWebSphereServerDelegate {
 			synchronizeRuntimeLocation(workingCopy);
 			WstServerWorkingCopyAdapter adapter = workingCopy.getAdapter(WstServerWorkingCopyAdapter.class);
 			if (adapter == null) {
-				throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+				throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
 						"Unable to adapt server working copy to WstServerWorkingCopyAdapter"));
 			}
 			org.eclipse.wst.server.core.IServerWorkingCopy wstWorkingCopy =
@@ -49,7 +49,7 @@ public class WebSphereServerDelegate extends AbstractWebSphereServerDelegate {
 			WebSphereWstServerAccess.runWithWebSphereContextClassLoader(() -> {
 				WASServer wasServer = wstWorkingCopy == null ? null : (WASServer) wstWorkingCopy.loadAdapter(WASServer.class, null);
 				if (wasServer == null) {
-					throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+					throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
 							"Unable to load WebSphere server adapter"));
 				}
 				wasServer.setWebSphereProfileName(profileName);
@@ -71,11 +71,11 @@ public class WebSphereServerDelegate extends AbstractWebSphereServerDelegate {
 		}
 		IRuntime runtime = workingCopy.getRuntime();
 		if (runtime == null) {
-			throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID, "Runtime is required"));
+			throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID, "Runtime is required"));
 		}
 		IRuntimeWorkingCopy runtimeWc = runtime.isWorkingCopy() ? (IRuntimeWorkingCopy) runtime : runtime.createWorkingCopy();
 		if (runtimeWc == null) {
-			throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+			throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
 					"Runtime must be a working copy in order to make changes"));
 		}
 		runtimeWc.setLocation(new Path(runtimeLocation));

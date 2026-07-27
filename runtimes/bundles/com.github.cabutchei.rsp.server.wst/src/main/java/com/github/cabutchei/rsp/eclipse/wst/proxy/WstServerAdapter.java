@@ -74,12 +74,9 @@ public class WstServerAdapter implements IWstServerControl {
 						: new WstRuntimeAdapter(this.wstServer.getRuntime()));
 		this.managementModel = managementModel;
 		this.serverModel = managementModel.getServerModel();
-		if(getServerType() != null ) {
-			// setAttribute(TYPE_ID, serverType.getId());
-			this.delegate = getServerType().createServerDelegate(this);
-		}
-		if( delegate != null && delegate.getServerPublishModel() != null ) {
-			delegate.getServerPublishModel().initialize(Collections.emptyList());
+		IServerDelegate initialDelegate = getDelegate();
+		if (initialDelegate != null && initialDelegate.getServerPublishModel() != null) {
+			initialDelegate.getServerPublishModel().initialize(Collections.emptyList());
 		}
 		// if( this.delegate != null ) {
 		// 	this.delegate.setDefaults(this);
@@ -127,6 +124,14 @@ public class WstServerAdapter implements IWstServerControl {
 
 	@Override
 	public IServerDelegate getDelegate() {
+		if (delegate != null) {
+			return delegate;
+		}
+		IServerType serverType = getServerType();
+		if (serverType == null) {
+			return null;
+		}
+		delegate = serverType.createServerDelegate(this);
 		return delegate;
 	}
 

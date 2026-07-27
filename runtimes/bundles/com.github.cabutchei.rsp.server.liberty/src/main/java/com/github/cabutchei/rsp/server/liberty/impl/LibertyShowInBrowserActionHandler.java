@@ -35,7 +35,7 @@ public class LibertyShowInBrowserActionHandler {
 	public ServerActionWorkflow getInitialWorkflow() {
 		WorkflowResponse workflow = new WorkflowResponse();
 		workflow.setStatus(StatusConverter.convert(
-				new Status(IStatus.INFO, Activator.BUNDLE_ID, ACTION_LABEL)));
+				new Status(IStatus.INFO, com.github.cabutchei.rsp.server.liberty.LibertyPluginConstants.BUNDLE_ID, ACTION_LABEL)));
 		ServerActionWorkflow action = new ServerActionWorkflow(ACTION_ID, ACTION_LABEL, workflow);
 
 		List<WorkflowResponseItem> items = new ArrayList<>();

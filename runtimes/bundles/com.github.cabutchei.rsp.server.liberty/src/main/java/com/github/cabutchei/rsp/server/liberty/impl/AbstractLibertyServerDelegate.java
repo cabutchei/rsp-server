@@ -64,7 +64,7 @@ public abstract class AbstractLibertyServerDelegate extends AbstractWstServerDel
 	}
 
 	private CreateServerValidation validateServerHomeFolderExists(IServer server) {
-		IStatus failed = new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+		IStatus failed = new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.liberty.LibertyPluginConstants.BUNDLE_ID,
 				"Server type not found at given server home");
 		String path = getServerHome(server);
 		if (path == null) {
@@ -78,7 +78,7 @@ public abstract class AbstractLibertyServerDelegate extends AbstractWstServerDel
 	}
 
 	private CreateServerValidation validateServerHomeDiscovery(IServer server) {
-		IStatus failed = new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+		IStatus failed = new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.liberty.LibertyPluginConstants.BUNDLE_ID,
 				"Server type not found at given server home");
 		String path = getServerHome(server);
 		if (path == null) {
@@ -95,12 +95,12 @@ public abstract class AbstractLibertyServerDelegate extends AbstractWstServerDel
 	private CreateServerValidation validateLibertyServerExists(IServer server) {
 		String home = getServerHome(server);
 		if (home == null) {
-			IStatus failed = new Status(IStatus.ERROR, Activator.BUNDLE_ID, "Server home is required");
+			IStatus failed = new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.liberty.LibertyPluginConstants.BUNDLE_ID, "Server home is required");
 			return new CreateServerValidation(failed, List.of(getServerHomeKey()));
 		}
 		String libertyId = getLibertyServerId();
 		if (libertyId == null || libertyId.trim().isEmpty()) {
-			IStatus failed = new Status(IStatus.ERROR, Activator.BUNDLE_ID, "Liberty server id is required");
+			IStatus failed = new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.liberty.LibertyPluginConstants.BUNDLE_ID, "Liberty server id is required");
 			return new CreateServerValidation(failed, List.of(ILibertyServerAttributes.LIBERTY_PROFILE));
 		}
 		// File usrServers = new File(home, "usr/servers");
@@ -116,7 +116,7 @@ public abstract class AbstractLibertyServerDelegate extends AbstractWstServerDel
 			status = LibertyWstServerAccess.validateLibertyServerExists(server);
 			return new CreateServerValidation(status, List.of(ILibertyServerAttributes.LIBERTY_PROFILE));
 		} catch (CoreException e) {
-			status = new Status(IStatus.ERROR, Activator.BUNDLE_ID, "Error validating Liberty server existence: " + e.getMessage(), e);
+			status = new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.liberty.LibertyPluginConstants.BUNDLE_ID, "Error validating Liberty server existence: " + e.getMessage(), e);
 			return new CreateServerValidation(status, List.of(ILibertyServerAttributes.LIBERTY_PROFILE));
 		}
 	}

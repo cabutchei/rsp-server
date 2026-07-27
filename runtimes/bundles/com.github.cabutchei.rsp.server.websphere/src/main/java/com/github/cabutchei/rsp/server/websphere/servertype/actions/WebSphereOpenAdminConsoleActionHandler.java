@@ -14,7 +14,6 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
 import com.github.cabutchei.rsp.server.spi.util.WorkflowUtility;
 import com.github.cabutchei.rsp.server.websphere.impl.AbstractWebSphereServerDelegate;
-import com.github.cabutchei.rsp.server.websphere.impl.Activator;
 import com.github.cabutchei.rsp.server.websphere.impl.WebSphereWstServerAccess;
 
 public class WebSphereOpenAdminConsoleActionHandler {
@@ -33,7 +32,7 @@ public class WebSphereOpenAdminConsoleActionHandler {
 		ServerActionWorkflow action = new ServerActionWorkflow(ACTION_ID, ACTION_LABEL, workflow);
 		workflow.setItems(new ArrayList<>());
 		workflow.setStatus(StatusConverter.convert(
-				new Status(IStatus.INFO, Activator.BUNDLE_ID, ACTION_LABEL)));
+				new Status(IStatus.INFO, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID, ACTION_LABEL)));
 		return action;
 	}
 

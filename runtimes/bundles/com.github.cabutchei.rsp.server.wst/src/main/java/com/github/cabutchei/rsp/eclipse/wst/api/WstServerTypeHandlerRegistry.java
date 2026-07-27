@@ -23,6 +23,11 @@ public final class WstServerTypeHandlerRegistry {
 	}
 
 	public static WstServerTypeHandler find(String serverTypeId) {
+		WstServerTypeHandler contributed = com.github.cabutchei.rsp.eclipse.wst.core.WstServerContributionRegistry
+				.findHandler(serverTypeId);
+		if (contributed != null) {
+			return contributed;
+		}
 		if( serverTypeId == null ) {
 			return null;
 		}
