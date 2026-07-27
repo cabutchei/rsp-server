@@ -234,6 +234,14 @@ public class FileWatcherService implements IFileWatcherService {
 		}
 	}
 
+	@Override
+	public void fireFileWatcherEvent(FileWatcherEvent event) {
+		if (event == null || event.getPath() == null || event.getKind() == null) {
+			return;
+		}
+		dispatchFileWatcherEvent(event);
+	}
+
 	private void updateSubscriptionsForRemovedRegistration(Path path) {
 		// If I'm not needed, unsubscribe
 		if( !pathShouldBeSubscribed(path)) {
@@ -461,7 +469,11 @@ public class FileWatcherService implements IFileWatcherService {
 
 	protected void fireSingleFileEvent(WatchKey key, WatchEvent<?> event) {
 		Path context = ((Path)key.watchable()).resolve((Path)event.context());
-		FileWatcherEvent toFire = new FileWatcherEvent(context, event.kind());
+		dispatchFileWatcherEvent(new FileWatcherEvent(context, event.kind()));
+	}
+
+	private void dispatchFileWatcherEvent(FileWatcherEvent toFire) {
+		Path context = toFire.getPath();
 
 		// Find non-recursive requests matching this exact path
 		Set<IFileWatcherEventListener> nonRecursive = findListenersForExactPath(context, false);
@@ -507,7 +519,7 @@ public class FileWatcherService implements IFileWatcherService {
 		 * and fire events at each step for every recursive listener. 
 		 * 
 		 */
-		if( event.kind() == StandardWatchEventKinds.ENTRY_CREATE
+		if( toFire.getKind() == StandardWatchEventKinds.ENTRY_CREATE
 				&& context.toFile().isDirectory() && context.toFile().exists()) {
 			List<ListenerEvent> events = createRecursiveSyntheticCreationEvents(
 					context, recursiveListeners);
@@ -515,7 +527,6 @@ public class FileWatcherService implements IFileWatcherService {
 				e.getListener().fileChanged(e.getEvent());
 			}
 		}
-		
 	}
 	
 	private List<ListenerEvent> createRecursiveSyntheticCreationEvents(

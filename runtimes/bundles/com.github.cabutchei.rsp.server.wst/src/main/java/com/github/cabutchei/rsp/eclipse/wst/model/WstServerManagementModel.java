@@ -7,6 +7,7 @@ import com.github.cabutchei.rsp.eclipse.workspace.ProjectsManager;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerCore;
 import com.github.cabutchei.rsp.eclipse.wst.wtp.WTPService;
 import com.github.cabutchei.rsp.server.model.ServerManagementModel;
+import com.github.cabutchei.rsp.server.spi.filewatcher.IFileWatcherService;
 import com.github.cabutchei.rsp.server.spi.model.IDataStoreModel;
 import com.github.cabutchei.rsp.server.spi.model.IServerModel;
 import com.github.cabutchei.rsp.server.spi.model.IWorkspaceModelCapability;
@@ -28,7 +29,9 @@ public class WstServerManagementModel extends ServerManagementModel implements I
 		PENDING_SERVER_MANAGER.remove();
 		IWorkspaceService resolvedWorkspaceService = Objects.requireNonNull(workspaceService, "workspaceService");
 		IWTPService wtpService = new WTPService();
-		this.projectsManager = new ProjectsManager(resolvedWorkspaceService, wtpService, Collections.emptyList());
+		IFileWatcherService fileWatcherService = getFileWatcherService();
+		this.projectsManager = new ProjectsManager(resolvedWorkspaceService, wtpService, fileWatcherService,
+				Collections.emptyList());
 		this.workspaceInitializationService = workspaceInitializationService != null
 				? workspaceInitializationService
 				: (resolvedWorkspaceService instanceof IWorkspaceInitializationService
@@ -53,6 +56,15 @@ public class WstServerManagementModel extends ServerManagementModel implements I
 	@Override
 	public IWorkspaceInitializationService getWorkspaceInitializationService() {
 		return workspaceInitializationService;
+	}
+
+	@Override
+	public void dispose() {
+		try {
+			projectsManager.dispose();
+		} finally {
+			super.dispose();
+		}
 	}
 
 	private static IDataStoreModel captureDependencies(IDataStoreModel dataLocation, IWstServerCore serverManager) {
