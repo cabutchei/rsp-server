@@ -28,7 +28,6 @@ import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
 
 import com.github.cabutchei.rsp.server.servertype.impl.IWebSphereServerAttributes;
 import com.github.cabutchei.rsp.server.websphere.impl.AbstractWebSphereServerDelegate;
-import com.github.cabutchei.rsp.server.websphere.impl.Activator;
 import com.github.cabutchei.rsp.server.websphere.impl.WebSphereWstServerAccess;
 
 public class WebSphereEditJvmPropertiesActionHandler {
@@ -68,12 +67,12 @@ public class WebSphereEditJvmPropertiesActionHandler {
 			item.setProperties(props);
 			workflow.setItems(List.of(item));
 			workflow.setStatus(StatusConverter.convert(
-					new Status(IStatus.INFO, Activator.BUNDLE_ID, ACTION_LABEL)));
+					new Status(IStatus.INFO, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID, ACTION_LABEL)));
 			return action;
 		} catch (Exception e) {
 			workflow.setItems(new ArrayList<>());
 			workflow.setStatus(StatusConverter.convert(
-					new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+					new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
 							"Failed to load JVM properties", e)));
 			return action;
 		}
@@ -92,7 +91,7 @@ public class WebSphereEditJvmPropertiesActionHandler {
 			WorkflowResponse resp = new WorkflowResponse();
 			resp.setItems(new ArrayList<>());
 			resp.setStatus(StatusConverter.convert(
-					new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+					new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
 							"Failed to update JVM properties", e)));
 			return resp;
 		}
@@ -150,12 +149,12 @@ public class WebSphereEditJvmPropertiesActionHandler {
 		try {
 			WsadminResult result = execWsadmin(script, action, jsonFile);
 			if (result.exitCode != 0) {
-				throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+				throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
 						"wsadmin failed: " + result.stderr));
 			}
 			String json = extractJson(result.stdout);
 			if (json == null) {
-				throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+				throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
 						"wsadmin returned unexpected output: " + result.stdout));
 			}
 			return json;
@@ -273,13 +272,13 @@ public class WebSphereEditJvmPropertiesActionHandler {
 	private String resolveWsadminExecutable() throws CoreException {
 		String home = resolveServerHome();
 		if (home == null || home.isEmpty()) {
-			throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+			throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
 					"WebSphere home is missing; cannot locate wsadmin"));
 		}
 		String exe = isWindows() ? "wsadmin.bat" : "wsadmin.sh";
 		File file = new File(new File(home, "bin"), exe);
 		if (!file.isFile()) {
-			throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+			throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
 					"wsadmin not found at " + file.getAbsolutePath()));
 		}
 		return file.getAbsolutePath();

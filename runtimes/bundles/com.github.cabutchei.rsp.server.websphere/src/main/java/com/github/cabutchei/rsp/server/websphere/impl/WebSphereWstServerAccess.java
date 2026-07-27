@@ -49,13 +49,13 @@ public final class WebSphereWstServerAccess implements IWstServerDelegateAccess<
 	public static IStatus validateWebSphereProfileExists(IServerAttributes server) throws CoreException {
 		WASServer wstDelegate = getWstDelegate(server);
 		if (wstDelegate == null) {
-			throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+			throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
 						"WST WASServer delegate not found"));
 		}
 		return withWebSphereContextClassLoader(() -> {
 			List<String> profiles = Arrays.asList(wstDelegate.getProfileNames());
 			if (profiles == null || profiles.isEmpty() || !profiles.contains(wstDelegate.getProfileName())) {
-				return new Status(IStatus.ERROR, Activator.BUNDLE_ID, "WebSphere profile '"
+				return new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID, "WebSphere profile '"
 						+ wstDelegate.getProfileName() + "' does not exist in the specified WebSphere installation.");
 			}
 			return Status.OK_STATUS;
@@ -174,7 +174,7 @@ public final class WebSphereWstServerAccess implements IWstServerDelegateAccess<
 		return runWithWebSphereContextClassLoader(() -> {
 			AbstractWASServerBehaviour behaviour = server.getAdapter(AbstractWASServerBehaviour.class);
 			if (behaviour == null) {
-				throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+				throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
 						"Unable to load WebSphere server behaviour"));
 			}
 			return behaviour.getAdminConsolePortNum();
@@ -190,7 +190,7 @@ public final class WebSphereWstServerAccess implements IWstServerDelegateAccess<
 			ServerXmlFileHandler handler = createServerXmlFileHandler(server);
 			IMemento jvmEntry = handler.getJavaVirtualMachine();
 			if (jvmEntry == null) {
-				throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+				throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
 						"Unable to resolve JVM entry in server.xml"));
 			}
 
@@ -230,7 +230,7 @@ public final class WebSphereWstServerAccess implements IWstServerDelegateAccess<
 			}
 			handler.save();
 		} catch (IOException e) {
-			throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+			throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
 					"Unable to update WebSphere server.xml", e));
 		}
 	}
@@ -254,7 +254,7 @@ public final class WebSphereWstServerAccess implements IWstServerDelegateAccess<
 			}
 			return systemProperties;
 		} catch (IOException e) {
-			throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+			throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
 					"Unable to read WebSphere server.xml", e));
 		}
 	}

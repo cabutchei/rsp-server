@@ -71,7 +71,7 @@ public abstract class AbstractWebSphereServerDelegate extends AbstractWstServerD
 			status = WebSphereWstServerAccess.validateWebSphereProfileExists(getServer());
 			return new CreateServerValidation(status, List.of(IWebSphereServerAttributes.WEBSPHERE_PROFILE));
 		} catch (CoreException e) {
-			status = new Status(IStatus.ERROR, Activator.BUNDLE_ID, "Error validating WebSphere profile existence: " + e.getMessage(), e);
+			status = new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID, "Error validating WebSphere profile existence: " + e.getMessage(), e);
 			return new CreateServerValidation(status, List.of(IWebSphereServerAttributes.WEBSPHERE_PROFILE));
 		}
 	}

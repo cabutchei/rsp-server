@@ -12,27 +12,20 @@ package com.github.cabutchei.rsp.server;
  * Options for bootstrapping an embedded server-management runtime.
  */
 public class ServerManagementRuntimeOptions {
-	private final boolean loadServersOnBootstrap;
 	private final String logFilePath;
 	private final boolean requireWorkspaceModelCapability;
 
-	public ServerManagementRuntimeOptions(boolean loadServersOnBootstrap) {
-		this(loadServersOnBootstrap, null, false);
+	public ServerManagementRuntimeOptions() {
+		this(null, false);
 	}
 
-	public ServerManagementRuntimeOptions(boolean loadServersOnBootstrap, String logFilePath) {
-		this(loadServersOnBootstrap, logFilePath, false);
+	public ServerManagementRuntimeOptions(String logFilePath) {
+		this(logFilePath, false);
 	}
 
-	public ServerManagementRuntimeOptions(boolean loadServersOnBootstrap, String logFilePath,
-			boolean requireWorkspaceModelCapability) {
-		this.loadServersOnBootstrap = loadServersOnBootstrap;
+	public ServerManagementRuntimeOptions(String logFilePath, boolean requireWorkspaceModelCapability) {
 		this.logFilePath = logFilePath;
 		this.requireWorkspaceModelCapability = requireWorkspaceModelCapability;
-	}
-
-	public boolean isLoadServersOnBootstrap() {
-		return loadServersOnBootstrap;
 	}
 
 	public String getLogFilePath() {
@@ -48,6 +41,6 @@ public class ServerManagementRuntimeOptions {
 	}
 
 	public static ServerManagementRuntimeOptions jdtlsOwnedWorkspaceDefaults(String logFilePath) {
-		return new ServerManagementRuntimeOptions(false, logFilePath, true);
+		return new ServerManagementRuntimeOptions(logFilePath, true);
 	}
 }

@@ -34,6 +34,7 @@ import com.github.cabutchei.rsp.eclipse.core.runtime.NullProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.eclipse.osgi.util.NLS;
 import com.github.cabutchei.rsp.eclipse.wst.api.IWstServerCore;
+import com.github.cabutchei.rsp.eclipse.wst.core.WstServerContributionRegistry;
 import com.github.cabutchei.rsp.eclipse.wst.model.delegate.AbstractWstServerDelegate;
 import com.github.cabutchei.rsp.eclipse.wst.model.launch.ServerLaunchMonitor;
 import com.github.cabutchei.rsp.eclipse.wst.proxy.WstServerAdapter;
@@ -178,6 +179,7 @@ public class WSTServerModel implements IServerModel {
 	
 	@Override
 	public void loadServers() throws CoreException {
+		ensureServerTypesRegistered();
 		IServer[] loadedServers = this.wstServerManager.loadServers(managementModel);
 		this.wstServerManager.updateServerStatus();
 		for (IServer server : loadedServers) {
@@ -518,6 +520,7 @@ public class WSTServerModel implements IServerModel {
 		if (!serverTypes.isEmpty()) {
 			return;
 		}
+		WstServerContributionRegistry.addExtensions(managementModel);
 		ServerCoreActivator.addDelayedExtensionsToModel();
 	}
 //	
@@ -626,7 +629,18 @@ public class WSTServerModel implements IServerModel {
 	}
 	
 	private IServerDelegate getServerDelegate(IServer server) {
-		return serverDelegates.get(server.getId());
+		if (server == null || server.getId() == null) {
+			return null;
+		}
+		IServerDelegate delegate = serverDelegates.get(server.getId());
+		if (delegate != null) {
+			return delegate;
+		}
+		delegate = server.getDelegate();
+		if (delegate != null) {
+			serverDelegates.put(server.getId(), delegate);
+		}
+		return delegate;
 	}
 
 	private IStatus publish(IServer server, int kind, IProgressMonitor monitor) {

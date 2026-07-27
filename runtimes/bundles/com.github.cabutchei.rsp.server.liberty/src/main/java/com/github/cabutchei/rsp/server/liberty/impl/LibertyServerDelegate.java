@@ -89,11 +89,11 @@ public class LibertyServerDelegate extends AbstractLibertyServerDelegate impleme
 		}
 		IRuntime runtime = workingCopy.getRuntime();
 		if (runtime == null) {
-			throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID, "Runtime is required"));
+			throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.liberty.LibertyPluginConstants.BUNDLE_ID, "Runtime is required"));
 		}
 		IRuntimeWorkingCopy runtimeWc = runtime.isWorkingCopy() ? (IRuntimeWorkingCopy) runtime : runtime.createWorkingCopy();
 		if (runtimeWc == null) {
-			throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+			throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.liberty.LibertyPluginConstants.BUNDLE_ID,
 					"Runtime must be a working copy in order to make changes"));
 		}
 		runtimeWc.setLocation(new Path(runtimeLocation));

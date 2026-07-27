@@ -66,16 +66,10 @@ public class ServerManagementServerLauncher {
 	protected ServerManagementRuntime runtime;
 	private ListenOnSocketRunnable socketRunnable;
 	private ServerSocket serverSocket;
-	private final boolean loadServersOnLaunch;
 	private int boundPort;
 	protected String portString;
 	public ServerManagementServerLauncher(String portString) {
-		this(portString, true);
-	}
-
-	public ServerManagementServerLauncher(String portString, boolean loadServersOnLaunch) {
 		this.portString = portString;
-		this.loadServersOnLaunch = loadServersOnLaunch;
 		this.boundPort = -1;
 		this.serverImpl = createImpl();
 		this.runtime = new ServerManagementRuntime(this.serverImpl.getModel(), this.serverImpl);
@@ -109,9 +103,7 @@ public class ServerManagementServerLauncher {
 
 	public void launch(int port) throws Exception {
 		// persistenceEventManager.loadState();
-		if (loadServersOnLaunch) {
-			runtime.ensureServersLoaded();
-		}
+		runtime.ensureServersLoaded();
 		startListening(port, serverImpl);
 	}
 	

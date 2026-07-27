@@ -37,7 +37,7 @@ final class EmbeddedRuntimeLog {
 			if (parent != null && !parent.exists()) {
 				parent.mkdirs();
 			}
-			writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(target, false), StandardCharsets.UTF_8));
+			writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(target, true), StandardCharsets.UTF_8));
 			logFile = target;
 			appendLocked("[embedded] log initialized at " + target.getAbsolutePath());
 		}

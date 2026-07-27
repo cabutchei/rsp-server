@@ -45,10 +45,10 @@ final class WebSphereWstServerTypeHandler implements WstServerTypeHandler {
 		String runtimeLocation = getStringAttribute(attributes, DefaultServerAttributes.SERVER_HOME_DIR, null);
 		IRuntime runtime = server.getRuntime();
 		if (runtime == null) {
-			throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID, "Runtime is required"));
+			throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID, "Runtime is required"));
 		}
 		if (!runtime.isWorkingCopy()) {
-			throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+			throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
 					"Runtime must be a working copy in order to make changes"));
 		}
 		if (runtimeLocation != null && !runtimeLocation.isBlank()) {
@@ -57,7 +57,7 @@ final class WebSphereWstServerTypeHandler implements WstServerTypeHandler {
 		}
 		WstServerWorkingCopyAdapter adapter = server.getAdapter(WstServerWorkingCopyAdapter.class);
 		if (adapter == null) {
-			throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+			throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
 					"Unable to adapt server working copy to WstServerWorkingCopyAdapter"));
 		}
 		org.eclipse.wst.server.core.IServerWorkingCopy wstServer = adapter.getAdapter(org.eclipse.wst.server.core.IServerWorkingCopy.class);
@@ -70,7 +70,7 @@ final class WebSphereWstServerTypeHandler implements WstServerTypeHandler {
 		WebSphereWstServerAccess.runWithWebSphereContextClassLoader(() -> {
 			WASServer wasServer = server == null ? null : (WASServer) server.loadAdapter(WASServer.class, null);
 			if( wasServer == null ) {
-				throw new CoreException(new Status(IStatus.ERROR, Activator.BUNDLE_ID,
+				throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
 						"Unable to load WebSphere server adapter"));
 			}
 			wasServer.setWebSphereProfileName(profileName);

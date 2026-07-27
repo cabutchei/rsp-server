@@ -59,7 +59,7 @@ public class LibertyEditServerConfigurationActionHandler {
 		items.add(item);
 		workflow.setItems(items);
 		workflow.setStatus(StatusConverter.convert(
-				new Status(IStatus.INFO, Activator.BUNDLE_ID, ACTION_LABEL)));
+				new Status(IStatus.INFO, com.github.cabutchei.rsp.server.liberty.LibertyPluginConstants.BUNDLE_ID, ACTION_LABEL)));
 		return action;
 	}
 
@@ -68,7 +68,7 @@ public class LibertyEditServerConfigurationActionHandler {
 		ServerActionWorkflow action = new ServerActionWorkflow(ACTION_ID, ACTION_LABEL, workflow);
 		workflow.setItems(new ArrayList<>());
 		workflow.setStatus(StatusConverter.convert(
-				new Status(IStatus.CANCEL, Activator.BUNDLE_ID, ACTION_LABEL)));
+				new Status(IStatus.CANCEL, com.github.cabutchei.rsp.server.liberty.LibertyPluginConstants.BUNDLE_ID, ACTION_LABEL)));
 		return action;
 	}
 
@@ -88,7 +88,7 @@ public class LibertyEditServerConfigurationActionHandler {
 		ServerActionWorkflow action = new ServerActionWorkflow(ACTION_ID, ACTION_LABEL, workflow);
 		workflow.setItems(List.of(item));
 		workflow.setStatus(StatusConverter.convert(
-				new Status(IStatus.OK, Activator.BUNDLE_ID, ACTION_LABEL)));
+				new Status(IStatus.OK, com.github.cabutchei.rsp.server.liberty.LibertyPluginConstants.BUNDLE_ID, ACTION_LABEL)));
 		return action;
 	}
 

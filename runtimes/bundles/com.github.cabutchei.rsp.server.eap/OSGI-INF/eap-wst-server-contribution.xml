@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.3.0"
+    name="com.github.cabutchei.rsp.server.eap.wstContribution">
+    <implementation class="com.github.cabutchei.rsp.server.eap.impl.EapWstServerContribution"/>
+    <service>
+        <provide interface="com.github.cabutchei.rsp.eclipse.wst.api.IWstServerContribution"/>
+    </service>
+</scr:component>
