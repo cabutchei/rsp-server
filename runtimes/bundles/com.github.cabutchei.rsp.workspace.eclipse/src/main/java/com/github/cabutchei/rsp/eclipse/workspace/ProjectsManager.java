@@ -5,6 +5,8 @@ import java.net.URI;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardWatchEventKinds;
+import java.nio.file.WatchEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -17,8 +19,12 @@ import java.util.Set;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IContainer;
+import org.eclipse.core.resources.ICommand;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IResourceChangeEvent;
+import org.eclipse.core.resources.IResourceChangeListener;
+import org.eclipse.core.resources.IResourceDelta;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IWorkspaceDescription;
 import org.eclipse.core.resources.IWorkspaceRoot;
@@ -36,6 +42,8 @@ import com.github.cabutchei.rsp.api.dao.DeployableReference;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.MultiStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
+import com.github.cabutchei.rsp.server.spi.filewatcher.FileWatcherEvent;
+import com.github.cabutchei.rsp.server.spi.filewatcher.IFileWatcherService;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectImporter;
 import com.github.cabutchei.rsp.server.spi.workspace.IProjectsManager;
 import com.github.cabutchei.rsp.server.spi.workspace.IWTPService;
@@ -48,29 +56,39 @@ public class ProjectsManager implements IProjectsManager {
 	private static final String PROJECT_FILE = ".project";
 	private static final String WEB_APP_LIBRARIES_CONTAINER_ID = "org.eclipse.jst.j2ee.internal.web.container";
 	private static final String WTP_MODULE_CONTAINER_ID = "org.eclipse.jst.j2ee.internal.module.container";
+	private static final String WTP_VALIDATION_BUILDER_ID = "org.eclipse.wst.validation.validationbuilder";
 	private static final int FILE_CHANGE_CREATED = 1;
 	private static final int FILE_CHANGE_CHANGED = 2;
 	private static final int FILE_CHANGE_DELETED = 3;
-	private static final List<String> DEFAULT_WATCH_PATTERNS = Collections.unmodifiableList(Arrays.asList(
-			// JDT LS already watches Java/classpath/build metadata. We keep only the
-			// WTP-specific descriptor here and layer deployment-driven watches on top.
-			"**/.settings/org.eclipse.wst.common.component"));
+	private static final int RELEVANT_CHANGE_FLAGS =
+			IResourceDelta.CONTENT | IResourceDelta.REPLACED | IResourceDelta.MOVED_FROM | IResourceDelta.MOVED_TO;
+	private static final List<String> DEFAULT_WATCH_PATTERNS = Collections.emptyList();
 
 	private final IWorkspaceService workspaceService;
 	private final IWTPService wtpService;
+	private final IFileWatcherService fileWatcherService;
 	private final List<IProjectImporter> projectImporters;
 	private final Set<String> dynamicWatchPatterns = new LinkedHashSet<>();
 	private final Set<Path> workspaceRoots = new LinkedHashSet<>();
+	private final IResourceChangeListener workspaceChangeListener;
 	private boolean initialized;
 
 	public ProjectsManager(IWorkspaceService workspaceService, List<IProjectImporter> projectImporters) {
-		this(workspaceService, null, projectImporters);
+		this(workspaceService, null, null, projectImporters);
 	}
 
 	public ProjectsManager(IWorkspaceService workspaceService, IWTPService wtpService, List<IProjectImporter> projectImporters) {
+		this(workspaceService, wtpService, null, projectImporters);
+	}
+
+	public ProjectsManager(IWorkspaceService workspaceService, IWTPService wtpService,
+			IFileWatcherService fileWatcherService, List<IProjectImporter> projectImporters) {
 		this.workspaceService = workspaceService;
 		this.wtpService = wtpService;
+		this.fileWatcherService = fileWatcherService;
 		this.projectImporters = projectImporters == null ? Collections.emptyList() : new ArrayList<>(projectImporters);
+		this.workspaceChangeListener = this::handleWorkspaceResourceChangeEvent;
+		registerWorkspaceChangeListener();
 	}
 
 	private IProject getProject(String projectName) {
@@ -93,6 +111,7 @@ public class ProjectsManager implements IProjectsManager {
 		IPath projectDescriptionPath = new org.eclipse.core.runtime.Path(projectRoot.resolve(PROJECT_FILE).toString());
 		try {
 			IProjectDescription description = workspace.loadProjectDescription(projectDescriptionPath);
+			description = withoutWtpValidationBuilder(description);
 			IProject project = workspace.getRoot().getProject(description.getName());
 			NullProgressMonitor monitor = new NullProgressMonitor();
 			if (!project.exists()) {
@@ -101,6 +120,7 @@ public class ProjectsManager implements IProjectsManager {
 			if (!project.isOpen()) {
 				project.open(monitor);
 			}
+			disableWtpValidation(project);
 			return Status.OK_STATUS;
 		} catch (CoreException ce) {
 			return errorStatus("Failed to import project at " + projectRoot, ce);
@@ -259,6 +279,9 @@ public class ProjectsManager implements IProjectsManager {
 						? Collections.singleton(deployablePath)
 						: wtpService.getDeploymentWatchPaths(deployablePath, null);
 				for (Path watchRoot : watchRoots) {
+					if (isWorkspaceManagedPath(watchRoot)) {
+						continue;
+					}
 					String pattern = toWatchPattern(watchRoot);
 					if (pattern != null && !pattern.isBlank()) {
 						nextPatterns.add(pattern);
@@ -298,6 +321,14 @@ public class ProjectsManager implements IProjectsManager {
 	}
 
 	@Override
+	public void dispose() {
+		IWorkspace workspace = getWorkspace();
+		if (workspace != null) {
+			workspace.removeResourceChangeListener(workspaceChangeListener);
+		}
+	}
+
+	@Override
 	public IWTPService getWTPService() {
 		return wtpService;
 	}
@@ -316,6 +347,47 @@ public class ProjectsManager implements IProjectsManager {
 		synchronized (workspaceRoots) {
 			return new ArrayList<>(workspaceRoots);
 		}
+	}
+
+	private void registerWorkspaceChangeListener() {
+		IWorkspace workspace = getWorkspace();
+		if (workspace != null) {
+			workspace.addResourceChangeListener(workspaceChangeListener, IResourceChangeEvent.POST_CHANGE);
+		}
+	}
+
+	private void handleWorkspaceResourceChangeEvent(IResourceChangeEvent event) {
+		if (event == null || event.getDelta() == null) {
+			return;
+		}
+		try {
+			event.getDelta().accept(delta -> {
+				handleWorkspaceResourceDelta(delta);
+				return true;
+			});
+		} catch (CoreException ce) {
+			LOG.warn("Failed to process workspace resource change event", ce);
+		}
+	}
+
+	private void handleWorkspaceResourceDelta(IResourceDelta delta) {
+		if (delta == null) {
+			return;
+		}
+		int changeType = toWorkspaceChangeType(delta);
+		if (changeType == 0) {
+			return;
+		}
+		Path changedPath = toFilesystemPath(delta.getResource());
+		if (changedPath == null) {
+			return;
+		}
+		Path normalized = changedPath.toAbsolutePath().normalize();
+		if (!isContainedInAny(normalized, getWorkspaceRootsSnapshot())) {
+			return;
+		}
+		handleWorkspaceManagedPathChange(normalized, changeType);
+		fireWorkspaceFileWatcherEvent(normalized, changeType);
 	}
 
 	private Collection<Path> normalizeRoots(Collection<Path> roots) {
@@ -537,6 +609,99 @@ public class ProjectsManager implements IProjectsManager {
 				failures.toArray(new IStatus[0]), "One or more projects failed to import", null);
 	}
 
+	private void handleWorkspaceManagedPathChange(Path normalizedPath, int changeType) {
+		if (wtpService != null) {
+			wtpService.invalidateDeployableResourceCache();
+		}
+		if (PROJECT_FILE.equals(normalizedPath.getFileName() == null ? null : normalizedPath.getFileName().toString())
+				&& (changeType == FILE_CHANGE_CREATED || changeType == FILE_CHANGE_CHANGED)) {
+			IStatus importStatus = importAllWorkspaceProjects();
+			if (!importStatus.isOK()) {
+				LOG.warn("Workspace import reported issues after resource change: {}", importStatus.getMessage());
+			}
+		}
+	}
+
+	private void fireWorkspaceFileWatcherEvent(Path path, int changeType) {
+		if (fileWatcherService == null || path == null) {
+			return;
+		}
+		WatchEvent.Kind<?> kind = toWatchEventKind(changeType);
+		if (kind != null) {
+			fileWatcherService.fireFileWatcherEvent(new FileWatcherEvent(path, kind));
+		}
+	}
+
+	private int toWorkspaceChangeType(IResourceDelta delta) {
+		if (delta == null) {
+			return 0;
+		}
+		switch (delta.getKind()) {
+		case IResourceDelta.ADDED:
+			return FILE_CHANGE_CREATED;
+		case IResourceDelta.REMOVED:
+			return FILE_CHANGE_DELETED;
+		case IResourceDelta.CHANGED:
+			return (delta.getFlags() & RELEVANT_CHANGE_FLAGS) == 0 ? 0 : FILE_CHANGE_CHANGED;
+		default:
+			return 0;
+		}
+	}
+
+	private WatchEvent.Kind<?> toWatchEventKind(int changeType) {
+		switch (changeType) {
+		case FILE_CHANGE_CREATED:
+			return StandardWatchEventKinds.ENTRY_CREATE;
+		case FILE_CHANGE_DELETED:
+			return StandardWatchEventKinds.ENTRY_DELETE;
+		case FILE_CHANGE_CHANGED:
+			return StandardWatchEventKinds.ENTRY_MODIFY;
+		default:
+			return null;
+		}
+	}
+
+	private Path toFilesystemPath(IResource resource) {
+		if (resource == null) {
+			return null;
+		}
+		URI locationUri = resource.getRawLocationURI();
+		if (locationUri == null) {
+			locationUri = resource.getLocationURI();
+		}
+		if (locationUri != null) {
+			try {
+				return Path.of(locationUri).toAbsolutePath().normalize();
+			} catch (Exception e) {
+				return null;
+			}
+		}
+		IPath location = resource.getLocation();
+		return location == null ? null : location.toFile().toPath().toAbsolutePath().normalize();
+	}
+
+	private boolean isWorkspaceManagedPath(Path path) {
+		IWorkspaceRoot root = getWorkspaceRoot();
+		if (root == null || path == null) {
+			return false;
+		}
+		Path normalized = path.toAbsolutePath().normalize();
+		for (IProject project : root.getProjects()) {
+			if (project == null || !project.exists()) {
+				continue;
+			}
+			IPath location = project.getLocation();
+			if (location == null) {
+				continue;
+			}
+			Path projectPath = location.toFile().toPath().toAbsolutePath().normalize();
+			if (normalized.startsWith(projectPath)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private String toWatchPattern(Path path) {
 		if (path == null) {
 			return null;
@@ -548,5 +713,41 @@ public class ProjectsManager implements IProjectsManager {
 		}
 		String fileName = normalized.getFileName() == null ? "" : normalized.getFileName().toString();
 		return fileName.contains(".") ? unixPath : unixPath + "/**";
+	}
+
+	private void disableWtpValidation(IProject project) throws CoreException {
+		if (project == null || !project.exists()) {
+			return;
+		}
+		IProjectDescription description = project.getDescription();
+		IProjectDescription sanitized = withoutWtpValidationBuilder(description);
+		if (sanitized != description) {
+			project.setDescription(sanitized, new NullProgressMonitor());
+			LOG.info("Disabled WTP validation builder for project {}", project.getName());
+		}
+	}
+
+	private IProjectDescription withoutWtpValidationBuilder(IProjectDescription description) {
+		if (description == null) {
+			return null;
+		}
+		ICommand[] buildSpec = description.getBuildSpec();
+		if (buildSpec == null || buildSpec.length == 0) {
+			return description;
+		}
+		List<ICommand> filtered = new ArrayList<>(buildSpec.length);
+		boolean changed = false;
+		for (ICommand command : buildSpec) {
+			if (command != null && WTP_VALIDATION_BUILDER_ID.equals(command.getBuilderName())) {
+				changed = true;
+				continue;
+			}
+			filtered.add(command);
+		}
+		if (!changed) {
+			return description;
+		}
+		description.setBuildSpec(filtered.toArray(new ICommand[0]));
+		return description;
 	}
 }

@@ -20,4 +20,6 @@ public interface IFileWatcherService {
 			IFileWatcherEventListener listener, boolean recursive);
 	
 	public void removeFileWatcherListener(Path path, IFileWatcherEventListener listener);
+
+	public void fireFileWatcherEvent(FileWatcherEvent event);
 }
