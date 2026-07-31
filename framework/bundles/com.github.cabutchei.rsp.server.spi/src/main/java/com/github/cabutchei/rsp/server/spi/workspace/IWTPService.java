@@ -41,6 +41,11 @@ public interface IWTPService extends IWTPConfiguration {
 
 	IStatus exportEar(Path projectPath, String projectName, Path destinationPath, boolean exportSource);
 
+	default IStatus exportEar(Path projectPath, String projectName, Path destinationPath, boolean exportSource,
+			com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor monitor) {
+		return exportEar(projectPath, projectName, destinationPath, exportSource);
+	}
+
 	IStatus addDeploymentAssemblyEntry(Path projectPath, String projectName, DeploymentAssemblyEntry entry);
 
 	IStatus removeDeploymentAssemblyEntry(Path projectPath, String projectName, DeploymentAssemblyEntry entry);

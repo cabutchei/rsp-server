@@ -103,6 +103,7 @@ import com.github.cabutchei.rsp.server.core.internal.ServerStringConstants;
 import com.github.cabutchei.rsp.server.discovery.serverbeans.ServerBeanLoader;
 import com.github.cabutchei.rsp.server.model.RemoteEventManager;
 import com.github.cabutchei.rsp.server.spi.client.ClientThreadLocal;
+import com.github.cabutchei.rsp.server.spi.jobs.IJobManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.github.cabutchei.rsp.server.spi.jobs.IJob;
@@ -913,7 +914,15 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		} catch (InvalidPathException ipe) {
 			return errorStatus("Invalid destination path: " + destinationString, ipe);
 		}
-		IStatus status = wtpService.exportEar(projectPath, projectName, destinationPath, request.isExportSource());
+		String archiveName = destinationPath.getFileName() == null ? destinationPath.toString() : destinationPath.getFileName().toString();
+		String jobName = "Exporting archive '" + archiveName + "'.";
+		IJobManager jobManager = managementModel.getJobManager();
+		final java.nio.file.Path resolvedProjectPath = projectPath;
+		IStatus status = jobManager == null
+				? wtpService.exportEar(resolvedProjectPath, projectName, destinationPath, request.isExportSource())
+				: jobManager.scheduleJobAndWait(jobName,
+						monitor -> wtpService.exportEar(resolvedProjectPath, projectName, destinationPath,
+								request.isExportSource(), monitor));
 		return StatusConverter.convert(status);
 	}
 
