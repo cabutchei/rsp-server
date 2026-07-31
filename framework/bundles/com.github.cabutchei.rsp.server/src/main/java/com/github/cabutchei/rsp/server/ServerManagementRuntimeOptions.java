@@ -14,18 +14,25 @@ package com.github.cabutchei.rsp.server;
 public class ServerManagementRuntimeOptions {
 	private final String logFilePath;
 	private final boolean requireWorkspaceModelCapability;
+	private final boolean wstPublishWatcherEnabled;
 
 	public ServerManagementRuntimeOptions() {
-		this(null, false);
+		this(null, false, true);
 	}
 
 	public ServerManagementRuntimeOptions(String logFilePath) {
-		this(logFilePath, false);
+		this(logFilePath, false, true);
 	}
 
 	public ServerManagementRuntimeOptions(String logFilePath, boolean requireWorkspaceModelCapability) {
+		this(logFilePath, requireWorkspaceModelCapability, true);
+	}
+
+	public ServerManagementRuntimeOptions(String logFilePath, boolean requireWorkspaceModelCapability,
+			boolean wstPublishWatcherEnabled) {
 		this.logFilePath = logFilePath;
 		this.requireWorkspaceModelCapability = requireWorkspaceModelCapability;
+		this.wstPublishWatcherEnabled = wstPublishWatcherEnabled;
 	}
 
 	public String getLogFilePath() {
@@ -36,11 +43,15 @@ public class ServerManagementRuntimeOptions {
 		return requireWorkspaceModelCapability;
 	}
 
+	public boolean isWstPublishWatcherEnabled() {
+		return wstPublishWatcherEnabled;
+	}
+
 	public static ServerManagementRuntimeOptions jdtlsOwnedWorkspaceDefaults() {
 		return jdtlsOwnedWorkspaceDefaults(null);
 	}
 
 	public static ServerManagementRuntimeOptions jdtlsOwnedWorkspaceDefaults(String logFilePath) {
-		return new ServerManagementRuntimeOptions(logFilePath, true);
+		return new ServerManagementRuntimeOptions(logFilePath, true, false);
 	}
 }
