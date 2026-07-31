@@ -1160,6 +1160,7 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 				return new InitializeResult(StatusConverter.convert(e.getStatus()), projectsManager.getWatchPatterns());
 			}
 		}
+		projectsManager.syncDeployableWatchPatterns(collectActiveDeployables());
 
 		return new InitializeResult(
 				StatusConverter.convert(com.github.cabutchei.rsp.eclipse.core.runtime.Status.OK_STATUS),

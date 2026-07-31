@@ -30,26 +30,34 @@ public class ServerManagementRuntime {
 	private final String host;
 	private final int port;
 	private final String logFilePath;
+	private final boolean wstPublishWatcherEnabled;
 	private final AtomicBoolean serversLoaded = new AtomicBoolean(false);
 	private final AtomicBoolean shutdown = new AtomicBoolean(false);
 
 	public ServerManagementRuntime(IServerManagementModel managementModel, ServerManagementServerImpl server) {
-		this(managementModel, server, null, "localhost", -1, null);
+		this(managementModel, server, null, "localhost", -1, null, RSPFlags.isWstPublishWatcherEnabled());
 	}
 
 	public ServerManagementRuntime(IServerManagementModel managementModel, ServerManagementServerImpl server,
 			ServerManagementServerLauncher launcher, String host, int port) {
-		this(managementModel, server, launcher, host, port, null);
+		this(managementModel, server, launcher, host, port, null, RSPFlags.isWstPublishWatcherEnabled());
 	}
 
 	public ServerManagementRuntime(IServerManagementModel managementModel, ServerManagementServerImpl server,
 			ServerManagementServerLauncher launcher, String host, int port, String logFilePath) {
+		this(managementModel, server, launcher, host, port, logFilePath, RSPFlags.isWstPublishWatcherEnabled());
+	}
+
+	public ServerManagementRuntime(IServerManagementModel managementModel, ServerManagementServerImpl server,
+			ServerManagementServerLauncher launcher, String host, int port, String logFilePath,
+			boolean wstPublishWatcherEnabled) {
 		this.managementModel = managementModel;
 		this.server = server;
 		this.launcher = launcher;
 		this.host = host == null ? "localhost" : host;
 		this.port = port;
 		this.logFilePath = logFilePath;
+		this.wstPublishWatcherEnabled = wstPublishWatcherEnabled;
 	}
 
 	public IServerManagementModel getModel() {
@@ -70,6 +78,10 @@ public class ServerManagementRuntime {
 
 	public String getLogFilePath() {
 		return logFilePath;
+	}
+
+	public boolean isWstPublishWatcherEnabled() {
+		return wstPublishWatcherEnabled;
 	}
 
 	public boolean isSocketServer() {
@@ -135,7 +147,16 @@ public class ServerManagementRuntime {
 					ServerManagementRuntime staleRuntime = activeEmbeddedRuntime;
 					activeEmbeddedRuntime = null;
 					staleRuntime.shutdown();
+				} else if (activeEmbeddedRuntime.isWstPublishWatcherEnabled()
+						!= resolvedOptions.isWstPublishWatcherEnabled()) {
+					EmbeddedRuntimeLog.append("[embedded] restarting stale runtime with mismatched WST publish watcher mode. "
+							+ "active=" + activeEmbeddedRuntime.isWstPublishWatcherEnabled() + ", requested="
+							+ resolvedOptions.isWstPublishWatcherEnabled());
+					ServerManagementRuntime staleRuntime = activeEmbeddedRuntime;
+					activeEmbeddedRuntime = null;
+					staleRuntime.shutdown();
 				} else {
+					applyRuntimeSystemProperties(resolvedOptions);
 					return activeEmbeddedRuntime;
 				}
 			}
@@ -157,6 +178,7 @@ public class ServerManagementRuntime {
 								+ describeModel(model) + "."));
 			}
 			try {
+				applyRuntimeSystemProperties(resolvedOptions);
 				LauncherSingleton.getDefault().setLauncher(launcher);
 				ServerCoreActivator.addDelayedExtensionsToModel();
 				launcher.launch(resolvedPort);
@@ -175,7 +197,8 @@ public class ServerManagementRuntime {
 						"Failed to launch embedded RSP socket server.", e));
 			}
 			ServerManagementRuntime runtime = new ServerManagementRuntime(launcher.getModel(), launcher.serverImpl,
-					launcher, "localhost", launcher.getBoundPort(), EmbeddedRuntimeLog.getPath());
+					launcher, "localhost", launcher.getBoundPort(), EmbeddedRuntimeLog.getPath(),
+					resolvedOptions.isWstPublishWatcherEnabled());
 			EmbeddedRuntimeLog.append("[embedded] socket server listening on localhost:" + launcher.getBoundPort());
 			activeEmbeddedRuntime = runtime;
 			return runtime;
@@ -214,5 +237,13 @@ public class ServerManagementRuntime {
 
 	private static String describeModel(IServerManagementModel model) {
 		return model == null ? "<null>" : model.getClass().getName();
+	}
+
+	private static void applyRuntimeSystemProperties(ServerManagementRuntimeOptions options) {
+		if (options == null) {
+			return;
+		}
+		System.setProperty(RSPFlags.SYSPROP_WST_PUBLISH_WATCHER_ENABLED,
+				Boolean.toString(options.isWstPublishWatcherEnabled()));
 	}
 }

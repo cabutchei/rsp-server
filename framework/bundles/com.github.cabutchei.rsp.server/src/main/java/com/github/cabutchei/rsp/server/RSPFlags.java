@@ -20,6 +20,7 @@ public class RSPFlags {
 	public static final String LOG_LEVEL_FLAG = LoggingConstants.SYSPROP_LOG_LEVEL_FLAG;
 	public static final String SYSPROP_SERVER_PORT = "rsp.server.port";
 	public static final String SYSPROP_SERVER_AUTOSTART = "rsp.server.autostart";
+	public static final String SYSPROP_WST_PUBLISH_WATCHER_ENABLED = "rsp.wst.publish.watcher.enabled";
 	public static final int DEFAULT_PORT = 27511;
 	
 	public static int getServerPort() {
@@ -28,6 +29,11 @@ public class RSPFlags {
 
 	public static boolean isServerAutostartEnabled() {
 		String value = System.getProperty(SYSPROP_SERVER_AUTOSTART);
+		return value == null ? true : Boolean.parseBoolean(value);
+	}
+
+	public static boolean isWstPublishWatcherEnabled() {
+		String value = System.getProperty(SYSPROP_WST_PUBLISH_WATCHER_ENABLED);
 		return value == null ? true : Boolean.parseBoolean(value);
 	}
 

@@ -17,6 +17,7 @@ import com.github.cabutchei.rsp.api.dao.DeployableReference;
 import com.github.cabutchei.rsp.api.dao.DeployableState;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
+import com.github.cabutchei.rsp.server.RSPFlags;
 import com.github.cabutchei.rsp.server.ServerCoreActivator;
 import com.github.cabutchei.rsp.server.model.AbstractServerDelegate;
 import com.github.cabutchei.rsp.server.model.internal.publishing.DeployableDelta;
@@ -304,6 +305,9 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	}
 	
 	private IStatus registerFileWatcher(DeployableReference reference) {
+		if (!RSPFlags.isWstPublishWatcherEnabled()) {
+			return Status.OK_STATUS;
+		}
 		if( fileWatcher != null ) {
 			// DEPLOY_ASSEMBLY
 			IStatus ret = cacheAssemblies(reference);
@@ -435,6 +439,9 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	}
 
 	private void unregisterFileWatcher(DeployableReference reference) {
+		if (!RSPFlags.isWstPublishWatcherEnabled()) {
+			return;
+		}
 		if (fileWatcher == null || reference == null) {
 			return;
 		}
@@ -639,6 +646,9 @@ public class WSTServerPublishStateModel implements IServerPublishModel, IFileWat
 	 */
 	@Override
 	public synchronized void fileChanged(FileWatcherEvent event) {
+		if (!RSPFlags.isWstPublishWatcherEnabled()) {
+			return;
+		}
 		// DEPLOY_ASSEMBLY
 		Path affected = event.getPath();
 		//System.out.println("File changed: " + affected.toString());

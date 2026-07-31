@@ -111,7 +111,6 @@ public class ProjectsManager implements IProjectsManager {
 		IPath projectDescriptionPath = new org.eclipse.core.runtime.Path(projectRoot.resolve(PROJECT_FILE).toString());
 		try {
 			IProjectDescription description = workspace.loadProjectDescription(projectDescriptionPath);
-			description = withoutWtpValidationBuilder(description);
 			IProject project = workspace.getRoot().getProject(description.getName());
 			NullProgressMonitor monitor = new NullProgressMonitor();
 			if (!project.exists()) {
@@ -120,7 +119,6 @@ public class ProjectsManager implements IProjectsManager {
 			if (!project.isOpen()) {
 				project.open(monitor);
 			}
-			disableWtpValidation(project);
 			return Status.OK_STATUS;
 		} catch (CoreException ce) {
 			return errorStatus("Failed to import project at " + projectRoot, ce);
@@ -219,6 +217,7 @@ public class ProjectsManager implements IProjectsManager {
 		if (!importStatus.isOK()) {
 			LOG.warn("Workspace import reported issues during initialization: {}", importStatus.getMessage());
 		}
+		sanitizeWorkspaceProjects();
 		notifyImportersInit(normalizedRoots);
 	}
 
@@ -238,6 +237,7 @@ public class ProjectsManager implements IProjectsManager {
 		if (!importStatus.isOK()) {
 			LOG.warn("Workspace import reported issues during workspace-folder update: {}", importStatus.getMessage());
 		}
+		sanitizeWorkspaceProjects();
 		notifyImportersUpdate(addedRoots, removedRoots);
 	}
 
@@ -279,7 +279,7 @@ public class ProjectsManager implements IProjectsManager {
 						? Collections.singleton(deployablePath)
 						: wtpService.getDeploymentWatchPaths(deployablePath, null);
 				for (Path watchRoot : watchRoots) {
-					if (isWorkspaceManagedPath(watchRoot)) {
+					if (isJdtManagedOutputPath(watchRoot)) {
 						continue;
 					}
 					String pattern = toWatchPattern(watchRoot);
@@ -680,26 +680,45 @@ public class ProjectsManager implements IProjectsManager {
 		return location == null ? null : location.toFile().toPath().toAbsolutePath().normalize();
 	}
 
-	private boolean isWorkspaceManagedPath(Path path) {
+	private boolean isJdtManagedOutputPath(Path path) {
 		IWorkspaceRoot root = getWorkspaceRoot();
 		if (root == null || path == null) {
 			return false;
 		}
 		Path normalized = path.toAbsolutePath().normalize();
 		for (IProject project : root.getProjects()) {
-			if (project == null || !project.exists()) {
+			if (project == null || !project.exists() || !project.isAccessible()) {
 				continue;
 			}
-			IPath location = project.getLocation();
-			if (location == null) {
-				continue;
-			}
-			Path projectPath = location.toFile().toPath().toAbsolutePath().normalize();
-			if (normalized.startsWith(projectPath)) {
-				return true;
+			try {
+				if (!project.hasNature(JavaCore.NATURE_ID)) {
+					continue;
+				}
+				IJavaProject javaProject = JavaCore.create(project);
+				if (javaProject == null || !javaProject.exists()) {
+					continue;
+				}
+				if (isWithinWorkspacePath(normalized, javaProject.getOutputLocation())) {
+					return true;
+				}
+				for (IClasspathEntry entry : javaProject.getRawClasspath()) {
+					if (entry == null || entry.getEntryKind() != IClasspathEntry.CPE_SOURCE) {
+						continue;
+					}
+					if (isWithinWorkspacePath(normalized, entry.getOutputLocation())) {
+						return true;
+					}
+				}
+			} catch (CoreException e) {
+				LOG.debug("Failed to inspect Java output paths for project {}", project.getName(), e);
 			}
 		}
 		return false;
+	}
+
+	private boolean isWithinWorkspacePath(Path candidate, IPath workspacePath) {
+		Path filesystemPath = toFilesystemPath(workspacePath);
+		return filesystemPath != null && candidate.startsWith(filesystemPath);
 	}
 
 	private String toWatchPattern(Path path) {
@@ -715,6 +734,36 @@ public class ProjectsManager implements IProjectsManager {
 		return fileName.contains(".") ? unixPath : unixPath + "/**";
 	}
 
+	private Path toFilesystemPath(IPath workspacePath) {
+		if (workspacePath == null) {
+			return null;
+		}
+		IWorkspaceRoot root = getWorkspaceRoot();
+		if (root == null) {
+			return null;
+		}
+		IResource resource = root.findMember(workspacePath);
+		if (resource != null) {
+			return toFilesystemPath(resource);
+		}
+		if (workspacePath.segmentCount() == 0) {
+			return null;
+		}
+		IProject project = root.getProject(workspacePath.segment(0));
+		if (project == null || !project.exists()) {
+			return null;
+		}
+		IPath projectLocation = project.getLocation();
+		if (projectLocation == null) {
+			return null;
+		}
+		Path resolved = projectLocation.toFile().toPath().toAbsolutePath().normalize();
+		for (int i = 1; i < workspacePath.segmentCount(); i++) {
+			resolved = resolved.resolve(workspacePath.segment(i));
+		}
+		return resolved.normalize();
+	}
+
 	private void disableWtpValidation(IProject project) throws CoreException {
 		if (project == null || !project.exists()) {
 			return;
@@ -724,6 +773,23 @@ public class ProjectsManager implements IProjectsManager {
 		if (sanitized != description) {
 			project.setDescription(sanitized, new NullProgressMonitor());
 			LOG.info("Disabled WTP validation builder for project {}", project.getName());
+		}
+	}
+
+	private void sanitizeWorkspaceProjects() {
+		IWorkspaceRoot root = getWorkspaceRoot();
+		if (root == null) {
+			return;
+		}
+		for (IProject project : root.getProjects()) {
+			if (project == null || !project.exists()) {
+				continue;
+			}
+			try {
+				disableWtpValidation(project);
+			} catch (CoreException e) {
+				LOG.warn("Failed to disable WTP validation builder for project {}", project.getName(), e);
+			}
 		}
 	}
 
