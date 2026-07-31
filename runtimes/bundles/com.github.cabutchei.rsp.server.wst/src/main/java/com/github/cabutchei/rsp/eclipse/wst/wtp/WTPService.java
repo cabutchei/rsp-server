@@ -43,6 +43,7 @@ import org.eclipse.wst.server.core.ServerUtil;
 import org.eclipse.wst.server.core.internal.ServerPreferences;
 
 import com.github.cabutchei.rsp.api.dao.ServerHandle;
+import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
 import com.github.cabutchei.rsp.eclipse.core.runtime.Status;
 import com.github.cabutchei.rsp.server.spi.workspace.DeployableArtifact;
@@ -195,6 +196,12 @@ public class WTPService implements IWTPService {
 
 	@Override
 	public IStatus exportEar(Path projectPath, String projectName, Path destinationPath, boolean exportSource) {
+		return exportEar(projectPath, projectName, destinationPath, exportSource, null);
+	}
+
+	@Override
+	public IStatus exportEar(Path projectPath, String projectName, Path destinationPath, boolean exportSource,
+			IProgressMonitor monitor) {
 		IProject project = resolveProject(projectPath, projectName);
 		if (project == null || !project.exists()) {
 			return errorStatus("Project not found", null);
@@ -224,7 +231,8 @@ public class WTPService implements IWTPService {
 			model.setProperty(IJ2EEComponentExportDataModelProperties.ARCHIVE_DESTINATION, normalizedDestination.toString());
 			model.setBooleanProperty(IJ2EEComponentExportDataModelProperties.OVERWRITE_EXISTING, true);
 			model.setBooleanProperty(IJ2EEComponentExportDataModelProperties.EXPORT_SOURCE_FILES, exportSource);
-			org.eclipse.core.runtime.IStatus status = model.getDefaultOperation().execute(new NullProgressMonitor(), null);
+			org.eclipse.core.runtime.IStatus status = model.getDefaultOperation().execute(
+					toWstProgressMonitor(monitor), null);
 			return status == null || status.isOK()
 					? okStatus()
 					: new Status(status.getSeverity(), BUNDLE_ID, status.getMessage(), status.getException());
@@ -233,6 +241,53 @@ public class WTPService implements IWTPService {
 		} catch (Exception e) {
 			return errorStatus("Failed to export EAR for project " + project.getName(), e);
 		}
+	}
+
+	private org.eclipse.core.runtime.IProgressMonitor toWstProgressMonitor(IProgressMonitor monitor) {
+		if (monitor == null) {
+			return new NullProgressMonitor();
+		}
+		return new org.eclipse.core.runtime.IProgressMonitor() {
+			@Override
+			public void beginTask(String name, int totalWork) {
+				monitor.beginTask(name, totalWork);
+			}
+
+			@Override
+			public void done() {
+				monitor.done();
+			}
+
+			@Override
+			public void internalWorked(double work) {
+				monitor.internalWorked(work);
+			}
+
+			@Override
+			public boolean isCanceled() {
+				return monitor.isCanceled();
+			}
+
+			@Override
+			public void setCanceled(boolean value) {
+				monitor.setCanceled(value);
+			}
+
+			@Override
+			public void setTaskName(String name) {
+				monitor.setTaskName(name);
+			}
+
+			@Override
+			public void subTask(String name) {
+				monitor.subTask(name);
+			}
+
+			@Override
+			public void worked(int work) {
+				monitor.worked(work);
+			}
+		};
 	}
 
 	@Override

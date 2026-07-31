@@ -13,8 +13,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import com.github.cabutchei.rsp.api.dao.JobHandle;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IRunnableWithProgress;
@@ -49,27 +51,48 @@ public class JobManager implements IJobManager {
 	@Override
 	public IJob scheduleJob(String jobName, IRunnableWithProgress runnable) {
 		SimpleJob job = new SimpleJob(jobName, generateJobId(), runnable, this);
-		IJob oldJob = currentJobs.get(job.getId());
-		if( oldJob != null )
+		if (!registerJob(job)) {
 			return null;
-		
-		currentJobs.put(job.getId(), job);
-		fireJobAdded(job);
-		schedule(job);
+		}
+		submit(job);
 		return job;
 	}
 
 	@Override
 	public IJob scheduleJob(String jobName, IStatusRunnableWithProgress runnable) {
 		SimpleJob job = new SimpleJob(jobName, generateJobId(), runnable, this);
-		IJob oldJob = currentJobs.get(job.getId());
-		if( oldJob != null )
+		if (!registerJob(job)) {
 			return null;
-		
+		}
+		submit(job);
+		return job;
+	}
+
+	@Override
+	public IStatus scheduleJobAndWait(String jobName, IStatusRunnableWithProgress runnable) {
+		SimpleJob job = new SimpleJob(jobName, generateJobId(), runnable, this);
+		if (!registerJob(job)) {
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, "Failed to schedule job " + jobName);
+		}
+		try {
+			return submit(job).get();
+		} catch (InterruptedException ie) {
+			Thread.currentThread().interrupt();
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, ie.getMessage(), ie);
+		} catch (ExecutionException ee) {
+			Throwable cause = ee.getCause() == null ? ee : ee.getCause();
+			return new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, cause.getMessage(), cause);
+		}
+	}
+
+	private boolean registerJob(SimpleJob job) {
+		IJob oldJob = currentJobs.get(job.getId());
+		if( oldJob != null ) {
+			return false;
+		}
 		currentJobs.put(job.getId(), job);
 		fireJobAdded(job);
-		schedule(job);
-		return job;
+		return true;
 	}
 	
 	private void fireJobAdded(IJob job) {
@@ -79,8 +102,8 @@ public class JobManager implements IJobManager {
 		}
 	}
 
-	private void schedule(SimpleJob job) {
-		executor.execute(() -> {
+	private Future<IStatus> submit(SimpleJob job) {
+		return executor.submit(() -> {
 			IStatus s = null;
 			try {
 				s = job.run();
@@ -88,6 +111,7 @@ public class JobManager implements IJobManager {
 				s = new Status(IStatus.ERROR, ServerCoreActivator.BUNDLE_ID, e.getMessage(), e);
 			}
 			fireJobComplete(job, s);
+			return s;
 		});
 	}
 	

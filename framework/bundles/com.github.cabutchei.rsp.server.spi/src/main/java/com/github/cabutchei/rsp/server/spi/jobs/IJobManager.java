@@ -45,6 +45,18 @@ public interface IJobManager {
 	public IJob scheduleJob(String jobName, IStatusRunnableWithProgress runnable);
 
 	/**
+	 * Schedule a job, wait for it to finish, and return its resulting status.
+	 *
+	 * Progress is still emitted through the normal job lifecycle callbacks while
+	 * the caller waits for completion.
+	 *
+	 * @param jobName a name for the job (not a unique id)
+	 * @param runnable a runnable that accepts a progress monitor and returns an IStatus object
+	 * @return the final status reported by the runnable
+	 */
+	public IStatus scheduleJobAndWait(String jobName, IStatusRunnableWithProgress runnable);
+
+	/**
 	 * The job work pctg has changed
 	 */
 	public void jobWorkChanged(IJob job);
