@@ -1548,8 +1548,12 @@ public class ServerManagementServerImpl implements RSPServer, WTPServer {
 		IServer server = managementModel.getServerModel().getServer(handle.getId());
 		try {
 			return server.getDelegate().listServerActions();
-		} catch(RuntimeException re) {
-			Status err = errorStatus("Error loading actions: " + re.getMessage(), re);
+		} catch(Throwable t) {
+			String message = t.getMessage();
+			if (message == null || message.trim().isEmpty()) {
+				message = t.getClass().getName();
+			}
+			Status err = errorStatus("Error loading actions: " + message, t);
 			resp.setStatus(err);
 			return resp;
 		}
