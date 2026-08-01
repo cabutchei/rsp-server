@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -40,6 +41,7 @@ public class WebSphereEditJvmPropertiesActionHandler {
 	private static final String MARKER_START = "RSP_JSON_START";
 	private static final String MARKER_END = "RSP_JSON_END";
 	private static final long WSADMIN_TIMEOUT_MS = 60000;
+	private static final boolean WSADMIN_FALLBACK_ENABLED = false;
 
 	private static final Gson GSON = new Gson();
 
@@ -69,7 +71,7 @@ public class WebSphereEditJvmPropertiesActionHandler {
 			workflow.setStatus(StatusConverter.convert(
 					new Status(IStatus.INFO, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID, ACTION_LABEL)));
 			return action;
-		} catch (Exception e) {
+		} catch (Throwable e) {
 			workflow.setItems(new ArrayList<>());
 			workflow.setStatus(StatusConverter.convert(
 					new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
@@ -87,7 +89,7 @@ public class WebSphereEditJvmPropertiesActionHandler {
 			List<Map<String, Object>> properties = decodeProperties(payload);
 			updateSystemProperties(properties);
 			return AbstractServerDelegate.okWorkflowResponse();
-		} catch (Exception e) {
+		} catch (Throwable e) {
 			WorkflowResponse resp = new WorkflowResponse();
 			resp.setItems(new ArrayList<>());
 			resp.setStatus(StatusConverter.convert(
@@ -110,14 +112,22 @@ public class WebSphereEditJvmPropertiesActionHandler {
 		try {
 			Map<String, String> props = WebSphereWstServerAccess.getSystemProperties(delegate.getServer());
 			return convertPropsToList(props);
-		} catch (CoreException e) {
-			String json = runWsadmin("list", null);
-			if (json == null || json.isEmpty()) {
-				return new ArrayList<>();
+		} catch (CoreException primary) {
+			if (!hasWsadminFallback()) {
+				throw primary;
 			}
-			List<Map<String, Object>> list =
-					GSON.fromJson(json, new TypeToken<List<Map<String, Object>>>() {}.getType());
-			return list == null ? new ArrayList<>() : list;
+			try {
+				String json = runWsadmin("list", null);
+				if (json == null || json.isEmpty()) {
+					return new ArrayList<>();
+				}
+				List<Map<String, Object>> list =
+						GSON.fromJson(json, new TypeToken<List<Map<String, Object>>>() {}.getType());
+				return list == null ? new ArrayList<>() : list;
+			} catch (Exception fallback) {
+				primary.addSuppressed(fallback);
+				throw primary;
+			}
 		}
 	}
 
@@ -126,20 +136,24 @@ public class WebSphereEditJvmPropertiesActionHandler {
 			Map<String, String> map = convertListToProps(properties);
 			WebSphereWstServerAccess.setSystemProperties(delegate.getServer(), map);
 			return;
-		} catch (CoreException e) {
-			// fall back to wsadmin
-		}
-
-		Path jsonFile = Files.createTempFile("wsadmin-jvm-props", ".json");
-		try {
-			String json = GSON.toJson(properties == null ? new ArrayList<>() : properties);
-			Files.writeString(jsonFile, json, StandardCharsets.UTF_8);
-			runWsadmin("apply", jsonFile);
-		} finally {
+		} catch (CoreException primary) {
+			if (!hasWsadminFallback()) {
+				throw primary;
+			}
+			Path jsonFile = Files.createTempFile("wsadmin-jvm-props", ".json");
 			try {
-				Files.deleteIfExists(jsonFile);
-			} catch (IOException e) {
-				// ignore
+				String json = GSON.toJson(properties == null ? new ArrayList<>() : properties);
+				Files.writeString(jsonFile, json, StandardCharsets.UTF_8);
+				runWsadmin("apply", jsonFile);
+			} catch (Exception fallback) {
+				primary.addSuppressed(fallback);
+				throw primary;
+			} finally {
+				try {
+					Files.deleteIfExists(jsonFile);
+				} catch (IOException e) {
+					// ignore
+				}
 			}
 		}
 	}
@@ -183,7 +197,7 @@ public class WebSphereEditJvmPropertiesActionHandler {
 	}
 
 	private Map<String, String> convertListToProps(List<Map<String, Object>> properties) {
-		Map<String, String> map = new HashMap<>();
+		Map<String, String> map = new LinkedHashMap<>();
 		if (properties == null) {
 			return map;
 		}
@@ -270,18 +284,18 @@ public class WebSphereEditJvmPropertiesActionHandler {
 	}
 
 	private String resolveWsadminExecutable() throws CoreException {
-		String home = resolveServerHome();
-		if (home == null || home.isEmpty()) {
-			throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
-					"WebSphere home is missing; cannot locate wsadmin"));
-		}
 		String exe = isWindows() ? "wsadmin.bat" : "wsadmin.sh";
-		File file = new File(new File(home, "bin"), exe);
-		if (!file.isFile()) {
-			throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
-					"wsadmin not found at " + file.getAbsolutePath()));
+		for (String candidateRoot : resolveWsadminCandidateRoots()) {
+			if (candidateRoot == null || candidateRoot.isEmpty()) {
+				continue;
+			}
+			File file = new File(new File(candidateRoot, "bin"), exe);
+			if (file.isFile()) {
+				return file.getAbsolutePath();
+			}
 		}
-		return file.getAbsolutePath();
+		throw new CoreException(new Status(IStatus.ERROR, com.github.cabutchei.rsp.server.websphere.WebSpherePluginConstants.BUNDLE_ID,
+				"wsadmin not found in any known WebSphere location"));
 	}
 
 	private String resolveServerHome() {
@@ -294,6 +308,52 @@ public class WebSphereEditJvmPropertiesActionHandler {
 		} catch (CoreException e) {
 			return null;
 		}
+	}
+
+	private String resolveProfileLocation() {
+		try {
+			String profileLocation = WebSphereWstServerAccess.getProfileLocation(delegate.getServer());
+			if (profileLocation != null && !profileLocation.isEmpty()) {
+				return profileLocation;
+			}
+		} catch (CoreException e) {
+			// ignore and try derived locations below
+		}
+		String home = resolveServerHome();
+		String profile = resolveProfileName();
+		if (home == null || home.isEmpty() || profile == null || profile.isEmpty()) {
+			return null;
+		}
+		return new File(new File(home, "profiles"), profile).getAbsolutePath();
+	}
+
+	private List<String> resolveWsadminCandidateRoots() {
+		List<String> roots = new ArrayList<>();
+		String serverHome = resolveServerHome();
+		if (serverHome != null && !serverHome.isEmpty()) {
+			roots.add(serverHome);
+		}
+		String profileLocation = resolveProfileLocation();
+		if (profileLocation != null && !profileLocation.isEmpty() && !roots.contains(profileLocation)) {
+			roots.add(profileLocation);
+		}
+		return roots;
+	}
+
+	private boolean hasWsadminFallback() {
+		if (!WSADMIN_FALLBACK_ENABLED) {
+			return false;
+		}
+		String exe = isWindows() ? "wsadmin.bat" : "wsadmin.sh";
+		for (String candidateRoot : resolveWsadminCandidateRoots()) {
+			if (candidateRoot == null || candidateRoot.isEmpty()) {
+				continue;
+			}
+			if (new File(new File(candidateRoot, "bin"), exe).isFile()) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private String resolveProfileName() {
