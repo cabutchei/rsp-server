@@ -1,16 +1,25 @@
 package com.github.cabutchei.rsp.server.eap.impl;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.github.cabutchei.rsp.api.DefaultServerAttributes;
 import com.github.cabutchei.rsp.api.dao.CommandLineDetails;
 import com.github.cabutchei.rsp.api.dao.DeployableReference;
+import com.github.cabutchei.rsp.api.dao.DeployableState;
+import com.github.cabutchei.rsp.api.dao.ListServerActionResponse;
+import com.github.cabutchei.rsp.api.dao.ServerActionRequest;
+import com.github.cabutchei.rsp.api.dao.ServerActionWorkflow;
 import com.github.cabutchei.rsp.api.dao.ServerState;
 import com.github.cabutchei.rsp.api.dao.StartServerResponse;
 import com.github.cabutchei.rsp.api.dao.UpdateServerResponse;
+import com.github.cabutchei.rsp.api.dao.WorkflowResponse;
+import com.github.cabutchei.rsp.api.ServerManagementAPIConstants;
 import com.github.cabutchei.rsp.eclipse.core.runtime.CoreException;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IProgressMonitor;
 import com.github.cabutchei.rsp.eclipse.core.runtime.IStatus;
@@ -22,8 +31,10 @@ import com.github.cabutchei.rsp.eclipse.jdt.JDTPlugin;
 import com.github.cabutchei.rsp.eclipse.wst.model.delegate.AbstractWstServerDelegate;
 import com.github.cabutchei.rsp.launching.java.ILaunchModes;
 import com.github.cabutchei.rsp.launching.utils.LaunchingDebugProperties;
+import com.github.cabutchei.rsp.server.eap.servertype.EapContextRootSupport;
 import com.github.cabutchei.rsp.server.eap.servertype.publishing.EapPublishController;
 import com.github.cabutchei.rsp.server.eap.servertype.IEapServerAttributes;
+import com.github.cabutchei.rsp.server.eap.servertype.actions.EapShowInBrowserActionHandler;
 import com.github.cabutchei.rsp.server.eap.adapter.IJBossRuntimeAdapter;
 import com.github.cabutchei.rsp.server.spi.servertype.IModuleStateProvider;
 import com.github.cabutchei.rsp.server.spi.servertype.IRuntime;
@@ -32,6 +43,8 @@ import com.github.cabutchei.rsp.server.spi.servertype.IServer;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerDelegate;
 import com.github.cabutchei.rsp.server.spi.servertype.IServerWorkingCopy;
 import com.github.cabutchei.rsp.server.spi.util.StatusConverter;
+import org.jboss.ide.eclipse.as.core.server.internal.JBossServer;
+import org.jboss.ide.eclipse.as.core.util.ServerUtil;
 
 public class EapServerDelegate extends AbstractWstServerDelegate implements IServerDelegate, IModuleStateProvider {
 	private static final String DEBUG_PORT_KEY = "com.github.cabutchei.rsp.server.eap.debugPort";
@@ -66,6 +79,32 @@ public class EapServerDelegate extends AbstractWstServerDelegate implements ISer
 	@Override
 	public ServerState getServerState() {
 		return super.getServerState();
+	}
+
+	@Override
+	public ListServerActionResponse listServerActions() {
+		ListServerActionResponse ret = new ListServerActionResponse();
+		ret.setStatus(StatusConverter.convert(Status.OK_STATUS));
+		List<ServerActionWorkflow> workflows = new ArrayList<>();
+		if (getServerRunState() == ServerManagementAPIConstants.STATE_STARTED) {
+			ServerActionWorkflow showInBrowser = new EapShowInBrowserActionHandler(this).getInitialWorkflow();
+			if (showInBrowser != null) {
+				workflows.add(showInBrowser);
+			}
+		}
+		ret.setWorkflows(workflows);
+		return ret;
+	}
+
+	@Override
+	public WorkflowResponse executeServerAction(ServerActionRequest req) {
+		if (req == null) {
+			return cancelWorkflowResponse();
+		}
+		if (EapShowInBrowserActionHandler.ACTION_ID.equals(req.getActionId())) {
+			return new EapShowInBrowserActionHandler(this).handle(req);
+		}
+		return super.executeServerAction(req);
 	}
 
 	@Override
@@ -188,5 +227,91 @@ public class EapServerDelegate extends AbstractWstServerDelegate implements ISer
 			return true;
 		}
 		return IEapServerAttributes.RESTART_FILE_PATTERN_DEFAULT.equals(pattern);
+	}
+
+	public String getShowInBrowserHost() {
+		org.eclipse.wst.server.core.IServer wtpServer = getServer().getAdapter(org.eclipse.wst.server.core.IServer.class);
+		if (wtpServer != null && wtpServer.getHost() != null && !wtpServer.getHost().isBlank()) {
+			return wtpServer.getHost();
+		}
+		return getServer().getAttribute(IEapServerAttributes.HOSTNAME, IEapServerAttributes.HOSTNAME_DEFAULT);
+	}
+
+	public int getShowInBrowserHttpPort() {
+		JBossServer jbossServer = getJBossServerAdapter();
+		if (jbossServer != null) {
+			return jbossServer.getJBossWebPort();
+		}
+		String configured = getServer().getAttribute(IEapServerAttributes.WEB_PORT, IEapServerAttributes.WEB_PORT_DEFAULT);
+		try {
+			return Integer.parseInt(configured);
+		} catch (NumberFormatException e) {
+			return 8080;
+		}
+	}
+
+	public String getShowInBrowserConfigurationFile() {
+		String configuredFile = getServer().getAttribute(IEapServerAttributes.CONFIG_FILE, IEapServerAttributes.CONFIG_FILE_DEFAULT);
+		if (configuredFile == null || configuredFile.isBlank()) {
+			return null;
+		}
+		File configured = new File(configuredFile);
+		if (configured.isAbsolute()) {
+			return configured.getAbsolutePath();
+		}
+
+		JBossServer jbossServer = getJBossServerAdapter();
+		if (jbossServer != null) {
+			String configDirectory = jbossServer.getConfigDirectory();
+			if (configDirectory != null && !configDirectory.isBlank()) {
+				return new File(configDirectory, configuredFile).getAbsolutePath();
+			}
+		}
+
+		String serverHome = getRuntimeLocation();
+		if (serverHome == null || serverHome.isBlank()) {
+			serverHome = getServer().getAttribute(DefaultServerAttributes.SERVER_HOME_DIR, (String) null);
+		}
+		if (serverHome == null || serverHome.isBlank()) {
+			String homeFile = getServer().getAttribute(DefaultServerAttributes.SERVER_HOME_FILE, (String) null);
+			if (homeFile != null && !homeFile.isBlank()) {
+				serverHome = new File(homeFile).getParent();
+			}
+		}
+		if (serverHome == null || serverHome.isBlank()) {
+			return null;
+		}
+
+		String baseDirectory = getServer().getAttribute(IEapServerAttributes.BASE_DIRECTORY, IEapServerAttributes.BASE_DIRECTORY_DEFAULT);
+		File configurationDir = new File(new File(serverHome, baseDirectory), "configuration");
+		return new File(configurationDir, configuredFile).getAbsolutePath();
+	}
+
+	public String getDeploymentStrategy() {
+		return "appendDeploymentNameRemoveSuffix";
+	}
+
+	public String[] getDeploymentUrls(String strat, String baseUrl, String deployableOutputName, DeployableState ds) {
+		return new EapContextRootSupport().getDeploymentUrls(strat, baseUrl, deployableOutputName, ds);
+	}
+
+	private JBossServer getJBossServerAdapter() {
+		org.eclipse.wst.server.core.IServer wtpServer = getServer().getAdapter(org.eclipse.wst.server.core.IServer.class);
+		if (wtpServer == null) {
+			return null;
+		}
+		try {
+			return (JBossServer) ServerUtil.checkedGetServerAdapter(wtpServer, JBossServer.class);
+		} catch (org.eclipse.core.runtime.CoreException e) {
+			return null;
+		}
+	}
+
+	private String getRuntimeLocation() {
+		IRuntime runtime = getServer().getRuntime();
+		if (runtime == null || runtime.getLocation() == null) {
+			return null;
+		}
+		return runtime.getLocation().toOSString();
 	}
 }
