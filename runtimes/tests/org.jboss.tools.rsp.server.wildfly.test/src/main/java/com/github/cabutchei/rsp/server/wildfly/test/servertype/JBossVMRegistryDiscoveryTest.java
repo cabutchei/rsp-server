@@ -3,7 +3,7 @@
  * All rights reserved. This program is made available under the terms of the
  * Eclipse Public License v2.0 which accompanies this distribution, and is
  * available at http://www.eclipse.org/legal/epl-v20.html
- * 
+ *
  * Contributors: Red Hat, Inc.
  ******************************************************************************/
 package com.github.cabutchei.rsp.server.wildfly.test.servertype;
@@ -38,11 +38,12 @@ public class JBossVMRegistryDiscoveryTest {
 		public IVMInstallRegistry getDefaultRegistry() {
 			return registry;
 		}
+
 		public String getNewVmName2(String base, IVMInstallRegistry reg) {
 			return super.getNewVmName(base, reg);
 		}
 	}
-	
+
 	@Before
 	public void before() {
 		this.registry = new VMInstallRegistry();
@@ -64,7 +65,7 @@ public class JBossVMRegistryDiscoveryTest {
 		discovery.getDefaultRegistry().removeVMInstall(discovery.getDefaultRegistry().getDefaultVMInstall());
 		assertThat(discovery.getDefaultRegistry().getVMs()).hasSize(0);
 	}
-	
+
 	@Test
 	public void findVMInstall() {
 		assertThat(discovery.getDefaultRegistry().getVMs()).hasSize(0);
@@ -78,7 +79,7 @@ public class JBossVMRegistryDiscoveryTest {
 		assertNotNull(discovery.findVMInstall(home));
 		assertThat(registry.getVMs()).hasSize(1);
 	}
-	
+
 	@Test
 	public void addMultipleVMs() {
 		String home = System.getProperty("java.home");
@@ -91,28 +92,27 @@ public class JBossVMRegistryDiscoveryTest {
 		String name3 = discovery.getNewVmName2("vm1 (2)", registry);
 		assertEquals(name3, "vm1 (2)");
 	}
-	
-	@Test 
+
+	@Test
 	public void ensureVMInstallAddedTest() {
 		assertThat(registry.getVMs()).hasSize(0);
 		assertFalse(discovery.ensureVMInstallAdded(null, registry));
 		registry.addActiveVM();
 		assertTrue(discovery.ensureVMInstallAdded(null, registry));
 		registry.removeVMInstall(registry.getDefaultVMInstall());
-		
+
 		File dataFolder = new DataLocationCore("27511").getDataLocation();
 		File dne = new File(dataFolder, "doesnotexist");
 		assertFalse(discovery.ensureVMInstallAdded(dne.getAbsolutePath(), registry));
 		try {
 			new FileOutputStream(dne).close();
-		} catch(IOException ioe) {
+		} catch (IOException ioe) {
 			fail();
 		}
 		assertFalse(discovery.ensureVMInstallAdded(dne.getAbsolutePath(), registry));
 		dne.delete();
 		assertFalse(discovery.ensureVMInstallAdded(dataFolder.getAbsolutePath(), registry));
-		
-		// Now try with javahome that does exist
+
 		String home = System.getProperty("java.home");
 		assertThat(registry.getVMs()).hasSize(0);
 		assertTrue(discovery.ensureVMInstallAdded(home, registry));
@@ -125,7 +125,6 @@ public class JBossVMRegistryDiscoveryTest {
 		IVMInstall ivmi = StandardVMType.getDefault().createVMInstall(id);
 		String home = System.getProperty("java.home");
 		ivmi.setInstallLocation(new File(home));
-		return ivmi;		
+		return ivmi;
 	}
-	
 }

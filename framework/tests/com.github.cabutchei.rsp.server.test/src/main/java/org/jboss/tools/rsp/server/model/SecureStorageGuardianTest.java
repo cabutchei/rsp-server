@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import com.github.cabutchei.rsp.api.ICapabilityKeys;
-import com.github.cabutchei.rsp.api.RSPClient;
+import com.github.cabutchei.rsp.api.RSPWTPClient;
 import com.github.cabutchei.rsp.api.dao.ClientCapabilitiesRequest;
 import com.github.cabutchei.rsp.secure.model.ISecureStorageProvider;
 import com.github.cabutchei.rsp.server.persistence.DataLocationCore;
@@ -33,7 +33,7 @@ public class SecureStorageGuardianTest {
 
 	@Test
 	public void testSecureStorageGuardian() throws IOException {
-		RSPClient client = mock(RSPClient.class);
+		RSPWTPClient client = mock(RSPWTPClient.class);
 		when(client.promptString(any())).thenReturn(CompletableFuture.completedFuture("abcde"));
 		ServerManagementModel model = createServerManagementModel();
 		testPromptableGuardian(model, client, true);
@@ -41,18 +41,18 @@ public class SecureStorageGuardianTest {
 
 	@Test
 	public void testGuardianSecondClientWrongPassword() throws IOException {
-		RSPClient client = mock(RSPClient.class);
+		RSPWTPClient client = mock(RSPWTPClient.class);
 		when(client.promptString(any())).thenReturn(CompletableFuture.completedFuture("abcde"));
 		ServerManagementModel model = createServerManagementModel();
 		testPromptableGuardian(model, client, true);
 
 		// Now test a second client with the wrong password
-		RSPClient client2 = mock(RSPClient.class);
+		RSPWTPClient client2 = mock(RSPWTPClient.class);
 		when(client2.promptString(any())).thenReturn(CompletableFuture.completedFuture("defgh"));
 		testPromptableGuardian(model, client2, false);
 	}
 
-	private void testPromptableGuardian(ServerManagementModel model, RSPClient client, boolean validPassword) {
+	private void testPromptableGuardian(ServerManagementModel model, RSPWTPClient client, boolean validPassword) {
 
 		ISecureStorageProvider provider = model.getSecureStorageProvider();
 		ClientThreadLocal.setActiveClient(null);

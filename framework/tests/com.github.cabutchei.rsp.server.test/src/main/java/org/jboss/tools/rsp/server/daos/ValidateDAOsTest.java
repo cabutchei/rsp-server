@@ -63,8 +63,13 @@ public class ValidateDAOsTest {
 	 
 	private static Class[] getClasses(String packageName) throws ClassNotFoundException, IOException {
 		Bundle bund = getBundle(ServerTestActivator.getContext(), "com.github.cabutchei.rsp.api");
-		String loc = bund.getLocation();
-		Enumeration<URL>  ents = bund.findEntries("com.github.cabutchei/api/dao/", "*", false);
+		if (bund == null) {
+			fail("Bundle com.github.cabutchei.rsp.api not found");
+		}
+		Enumeration<URL>  ents = bund.findEntries("com/github/cabutchei/rsp/api/dao/", "*", false);
+		if (ents == null) {
+			fail("No DAO entries found in bundle com.github.cabutchei.rsp.api");
+		}
 		ArrayList<Class> classes = new ArrayList<>();
 		while(ents.hasMoreElements()) {
 			URL u = ents.nextElement();
@@ -73,7 +78,7 @@ public class ValidateDAOsTest {
 				String fName =  p.substring(p.lastIndexOf("/")+1);
 				fName = fName.substring(0, fName.length() - 6);
 				String className = packageName + "." + fName;
-				Class c = Class.forName(className);
+				Class c = bund.loadClass(className);
 				classes.add(c);
 			}
 		}

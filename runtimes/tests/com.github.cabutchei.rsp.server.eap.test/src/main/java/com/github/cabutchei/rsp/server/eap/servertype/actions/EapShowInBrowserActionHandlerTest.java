@@ -1,12 +1,13 @@
 package com.github.cabutchei.rsp.server.eap.servertype.actions;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.File;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +31,7 @@ public class EapShowInBrowserActionHandlerTest {
 						+ "<socket-binding name=\"https\" port=\"${jboss.https.port:8443}\"/>"
 						+ "</socket-binding-group>");
 
-		Map<String, List<Integer>> ports = EapShowInBrowserActionHandler.getConfiguredProtocolPorts(configFile);
+		Map<String, List<Integer>> ports = getConfiguredProtocolPorts(configFile);
 
 		assertNotNull(ports);
 		assertEquals(List.of(8081), ports.get("http"));
@@ -54,7 +55,7 @@ public class EapShowInBrowserActionHandlerTest {
 						+ "<socket-binding name=\"https-fixed\" port=\"9443\" fixed-port=\"true\"/>"
 						+ "</socket-binding-group>");
 
-		Map<String, List<Integer>> ports = EapShowInBrowserActionHandler.getConfiguredProtocolPorts(configFile);
+		Map<String, List<Integer>> ports = getConfiguredProtocolPorts(configFile);
 
 		assertNotNull(ports);
 		assertEquals(List.of(8180), ports.get("http"));
@@ -76,7 +77,7 @@ public class EapShowInBrowserActionHandlerTest {
 						+ "<socket-binding name=\"ajp\" port=\"8009\"/>"
 						+ "</socket-binding-group>");
 
-		Map<String, List<Integer>> ports = EapShowInBrowserActionHandler.getConfiguredProtocolPorts(configFile);
+		Map<String, List<Integer>> ports = getConfiguredProtocolPorts(configFile);
 
 		assertNotNull(ports);
 		assertEquals(List.of(8080), ports.get("http"));
@@ -123,6 +124,13 @@ public class EapShowInBrowserActionHandlerTest {
 		configFile.deleteOnExit();
 		Files.writeString(configFile.toPath(), "<server>" + innerXml + "</server>");
 		return configFile;
+	}
+
+	@SuppressWarnings("unchecked")
+	private static Map<String, List<Integer>> getConfiguredProtocolPorts(File configFile) throws Exception {
+		Method method = EapShowInBrowserActionHandler.class.getDeclaredMethod("getConfiguredProtocolPorts", File.class);
+		method.setAccessible(true);
+		return (Map<String, List<Integer>>) method.invoke(null, configFile);
 	}
 
 	private static class TestableEapShowInBrowserActionHandler extends EapShowInBrowserActionHandler {

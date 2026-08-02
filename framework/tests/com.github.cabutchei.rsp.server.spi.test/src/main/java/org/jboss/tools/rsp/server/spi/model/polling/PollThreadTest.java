@@ -10,7 +10,6 @@ package com.github.cabutchei.rsp.server.spi.model.polling;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -86,18 +85,16 @@ public class PollThreadTest {
 		PollThreadUtils.stopPolling(pollThreadSpy);
 		verify(pollThreadSpy, never()).cancel();
 	}
-//
-//	@Test
-//	public void stopPollingCancelsRunningThread() throws InterruptedException {
-//		PollThread pollThreadSpy = spy(pollThread);
-//		pollThreadSpy.start();
-//
-//		PollThreadUtils.stopPolling(pollThreadSpy);
-//
-//		verify(pollThreadSpy, times(1)).cancel();
-//
-//		pollThread.cancel();
-//	}
+
+	@Test
+	public void stopPollingCancelsRunningThread() throws Exception {
+		TestPollThread pollThreadSpy = runningPollThread();
+
+		PollThreadUtils.stopPolling(pollThreadSpy);
+		pollThreadSpy.join(RESULT_TIMEOUT);
+
+		assertThat(pollThreadSpy.wasCancelled()).isTrue();
+	}
 
 	@Test
 	public void pollServerSavesNewThread() {
@@ -107,28 +104,30 @@ public class PollThreadTest {
 
 		pollThread.cancel();
 	}
-//
-//	@Test
-//	public void pollServerCancelsCurrentThread() throws InterruptedException {
-//		PollThread pollThreadSpy = spy(pollThread);
-//		pollThreadSpy.start();
-//		
-//		PollThread newPollThread = PollThreadUtils.pollServer(server, SERVER_STATE.UP, poller, pollThreadSpy, resultListener, TIMEOUT);
-//		verify(pollThreadSpy, atLeast(1)).cancel();
-//		
-//		newPollThread.cancel();
-//	}
-//
-//	@Test
-//	public void pollServerCreatesNewThread() throws InterruptedException {
-//		PollThread pollThreadSpy = spy(pollThread);
-//		pollThreadSpy.start();
-//		
-//		PollThread newPollThread = PollThreadUtils.pollServer(server, SERVER_STATE.UP, poller, pollThreadSpy, resultListener, TIMEOUT);
-//		assertThat(pollThread).isNotEqualTo(newPollThread);
-//		
-//		newPollThread.cancel();
-//	}
+
+	@Test
+	public void pollServerCancelsCurrentThread() throws Exception {
+		TestPollThread pollThreadSpy = runningPollThread();
+
+		PollThread newPollThread = PollThreadUtils.pollServer(server, SERVER_STATE.UP, poller, pollThreadSpy, resultListener, TIMEOUT);
+		pollThreadSpy.join(RESULT_TIMEOUT);
+
+		assertThat(pollThreadSpy.wasCancelled()).isTrue();
+
+		newPollThread.cancel();
+	}
+
+	@Test
+	public void pollServerCreatesNewThread() throws Exception {
+		TestPollThread pollThreadSpy = runningPollThread();
+
+		PollThread newPollThread = PollThreadUtils.pollServer(server, SERVER_STATE.UP, poller, pollThreadSpy, resultListener, TIMEOUT);
+		pollThreadSpy.join(RESULT_TIMEOUT);
+
+		assertThat(pollThreadSpy).isNotEqualTo(newPollThread);
+
+		newPollThread.cancel();
+	}
 
 	@Test
 	public void notifiesOppositeStateIfNoPoller() throws InterruptedException {
@@ -332,6 +331,34 @@ public class PollThreadTest {
 		return poller;
 	}
 
+	private TestPollThread runningPollThread() throws Exception {
+		IServerStatePoller runningPoller = mock(IServerStatePoller.class);
+		doReturn(false).when(runningPoller).isComplete();
+		doReturn(SERVER_STATE.UNKNOWN).when(runningPoller).getState();
+		TestPollThread thread = new TestPollThread(runningPoller);
+		thread.start();
+		Thread.sleep(150);
+		return thread;
+	}
+
+	private class TestPollThread extends PollThread {
+		private volatile boolean cancelled;
+
+		private TestPollThread(IServerStatePoller poller) {
+			super(SERVER_STATE.UP, poller, resultListener, server, TIMEOUT);
+		}
+
+		@Override
+		public void cancel() {
+			cancelled = true;
+			super.cancel();
+		}
+
+		private boolean wasCancelled() {
+			return cancelled;
+		}
+	}
+
 	private class AssertedState {
 
 		private boolean isAsserted;
@@ -371,4 +398,3 @@ public class PollThreadTest {
 	}
 
 }
-

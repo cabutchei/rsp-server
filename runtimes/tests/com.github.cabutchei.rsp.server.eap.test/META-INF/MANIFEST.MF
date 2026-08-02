@@ -1,0 +1,17 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: com.github.cabutchei.rsp.server.eap.test
+Bundle-SymbolicName: com.github.cabutchei.rsp.server.eap.test
+Automatic-Module-Name: com.github.cabutchei.rsp.server.eap.test
+Bundle-Version: 0.8.0.Final
+Bundle-RequiredExecutionEnvironment: JavaSE-11
+Require-Bundle: com.github.cabutchei.rsp.server,
+ com.github.cabutchei.rsp.server.spi,
+ com.github.cabutchei.rsp.server.wst,
+ com.github.cabutchei.rsp.server.eap,
+ com.github.cabutchei.rsp.api,
+ com.github.cabutchei.rsp.launching,
+ com.github.cabutchei.rsp.jdt.eclipse,
+ org.jboss.ide.eclipse.as.core,
+ org.junit,
+ org.mockito
