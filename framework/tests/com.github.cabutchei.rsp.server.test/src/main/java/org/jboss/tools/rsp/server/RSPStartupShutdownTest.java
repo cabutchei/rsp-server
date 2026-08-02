@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 
-import com.github.cabutchei.rsp.api.RSPClient;
+import com.github.cabutchei.rsp.api.RSPWTPClient;
 import com.github.cabutchei.rsp.api.SocketLauncher;
 import com.github.cabutchei.rsp.server.ShutdownExecutor.IShutdownHandler;
 import com.github.cabutchei.rsp.server.model.ServerManagementModel;
@@ -118,7 +118,7 @@ public class RSPStartupShutdownTest {
 		} catch(InterruptedException ie) {}
 
 		assertNotNull(clientInstance.getServerProxy());
-		List<RSPClient> clients = rspInstance.getClients();
+		List<RSPWTPClient> clients = rspInstance.getClients();
 		assertNotNull(clients);
 		assertEquals(1, clients.size());
 		
@@ -172,7 +172,7 @@ public class RSPStartupShutdownTest {
 				DataLocationCore dlc = new DataLocationCore(this.portString);
 				return new ServerManagementServerImpl(this, new ServerManagementModel(dlc)) {
 					@Override
-					protected void removeClient(SocketLauncher<RSPClient> launcher) {
+					protected void removeClient(SocketLauncher<RSPWTPClient> launcher) {
 						try {
 							startSignal.await();
 						} catch(InterruptedException ie) {
@@ -181,7 +181,7 @@ public class RSPStartupShutdownTest {
 						doneSignal.countDown();
 					}
 					@Override
-					public Runnable addClient(SocketLauncher<RSPClient> launcher) {
+					public Runnable addClient(SocketLauncher<RSPWTPClient> launcher) {
 						try {
 							startSignal.await();
 						} catch(InterruptedException ie) {

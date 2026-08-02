@@ -8,13 +8,14 @@
  ******************************************************************************/
 package com.github.cabutchei.rsp.server.workspace;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+	import static org.junit.Assert.assertFalse;
+	import static org.junit.Assert.assertEquals;
+	import static org.junit.Assert.assertTrue;
+	import static org.mockito.Mockito.never;
+	import static org.mockito.ArgumentMatchers.eq;
+	import static org.mockito.Mockito.mock;
+	import static org.mockito.Mockito.verify;
+	import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
 import java.nio.file.Paths;
@@ -109,10 +110,10 @@ public class WorkspaceOperationsTest {
 	}
 
 	@Test
-	public void testInitializeResolvesProjectsManagerLazily() throws Exception {
+	public void testInitializeFailsWhenProjectsManagerUnavailable() throws Exception {
 		IServerModel serverModel = mock(IServerModel.class);
 		when(managementModel.getServerModel()).thenReturn(serverModel);
-		when(((IWorkspaceModelCapability) managementModel).getProjectsManager()).thenReturn(null, projectsManager);
+		when(((IWorkspaceModelCapability) managementModel).getProjectsManager()).thenReturn(null);
 
 		ServerManagementServerImpl rsp = new ServerManagementServerImpl(null, managementModel) {
 			@Override
@@ -123,8 +124,8 @@ public class WorkspaceOperationsTest {
 
 		InitializeResult result = rsp.initialize(new InitializeParams()).get();
 
-		assertTrue(result.getStatus().isOK());
-		verify(projectsManager).initializeProjects(Collections.emptyList());
-		verify(serverModel).loadServers();
+		assertFalse(result.getStatus().isOK());
+		verify(projectsManager, never()).initializeProjects(Collections.emptyList());
+		verify(serverModel, never()).loadServers();
 	}
 }

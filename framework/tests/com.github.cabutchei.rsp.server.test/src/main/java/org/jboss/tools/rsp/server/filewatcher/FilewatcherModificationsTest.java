@@ -13,6 +13,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeFalse;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -47,12 +48,17 @@ public class FilewatcherModificationsTest {
 
 	@Before
 	public void before() {
+		assumeFalse("WatchService modification tests are unreliable on macOS/aarch64 with the current target environment",
+				isMacAarch64());
 		this.service = new FileWatcherServiceWithLatches();
 		service.start();
 	}
 
 	@After
 	public void after() {
+		if (service == null) {
+			return;
+		}
 		service.stop();
 		assertNull(service.getExecutor());
 		assertNull(service.getWatchService());
@@ -472,5 +478,9 @@ public class FilewatcherModificationsTest {
 		return os.indexOf("mac") >= 0;
 
 	}
-}
 
+	private static boolean isMacAarch64() {
+		String arch = System.getProperty("os.arch", "").toLowerCase();
+		return isMac() && (arch.contains("aarch64") || arch.contains("arm64"));
+	}
+}

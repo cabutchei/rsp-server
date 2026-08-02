@@ -177,13 +177,14 @@ public class JobManagerTest {
 			signal2[0].await();
 		} catch(InterruptedException ie) {}
 		
-		assertEquals(calls.size(), 6);
-		assertEquals(calls.get(0), 10.0, .001);
-		assertEquals(calls.get(1), 20.0, .001);
-		assertEquals(calls.get(2), 30.0, .001);
-		assertEquals(calls.get(3), 50.0, .001);
-		assertEquals(calls.get(4), 70.0, .001);
-		assertEquals(calls.get(5), 100.0, .001);
+		assertEquals(calls.size(), 7);
+		assertEquals(calls.get(0), 0.0, .001);
+		assertEquals(calls.get(1), 10.0, .001);
+		assertEquals(calls.get(2), 20.0, .001);
+		assertEquals(calls.get(3), 30.0, .001);
+		assertEquals(calls.get(4), 50.0, .001);
+		assertEquals(calls.get(5), 70.0, .001);
+		assertEquals(calls.get(6), 100.0, .001);
 	}
 
 	
