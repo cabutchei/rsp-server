@@ -3,8 +3,8 @@ Bundle-ManifestVersion: 2
 Bundle-Name: com.github.cabutchei.rsp.launching.java
 Bundle-SymbolicName: com.github.cabutchei.rsp.launching.java
 Automatic-Module-Name: com.github.cabutchei.rsp.launching.java
-Bundle-Version: 0.7.0.Final
-Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Bundle-Version: 1.0.0.Final
+Bundle-RequiredExecutionEnvironment: JavaSE-11
 Bundle-Activator: com.github.cabutchei.rsp.launching.java.JavaLaunchingActivator
 Bundle-ClassPath: .
 Import-Package: com.google.gson,

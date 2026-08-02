@@ -7,7 +7,7 @@
   <parent>
     <groupId>com.github.cabutchei.rsp</groupId>
     <artifactId>parent</artifactId>
-    <version>0.7.0.Final</version>
+    <version>1.0.0.Final</version>
   </parent>
   <artifactId>framework</artifactId>
   <groupId>com.github.cabutchei.rsp</groupId>
@@ -15,6 +15,6 @@
 
   <modules>
     <module>bundles</module>
-    <!-- <module>tests</module> -->
+    <module>tests</module>
   </modules>
 </project>

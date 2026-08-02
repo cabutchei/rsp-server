@@ -8,15 +8,15 @@
   <parent>
     <groupId>com.github.cabutchei.rsp</groupId>
     <artifactId>parent</artifactId>
-    <version>0.7.0.Final</version>
+    <version>1.0.0.Final</version>
   </parent>
 
   <groupId>com.github.cabutchei.rsp</groupId>
   <artifactId>runtimes</artifactId>
   <packaging>pom</packaging>
 
-  <modules>
-    <module>bundles</module>
-    <!-- <module>tests</module> -->
-  </modules>
-</project>
+		<modules>
+			<module>bundles</module>
+			<module>tests</module>
+		</modules>
+	</project>

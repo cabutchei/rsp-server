@@ -7,7 +7,7 @@
 
 	<groupId>com.github.cabutchei.rsp</groupId>
 	<artifactId>parent</artifactId>
-	<version>0.7.0.Final</version>
+	<version>1.0.0.Final</version>
 
 	<packaging>pom</packaging>
 	<name>Runtime Server Protocol</name>
@@ -41,8 +41,8 @@
 	</developers>
 
 	<properties>
-		<tycho-version>1.3.0</tycho-version>
-		<jacoco.version>0.8.4</jacoco.version>
+		<tycho-version>4.0.4</tycho-version>
+		<jacoco.version>0.8.12</jacoco.version>
 		<moduleProperties></moduleProperties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven-surefire-plugin.version>3.0.0-M3</maven-surefire-plugin.version>
@@ -64,8 +64,8 @@
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-compiler-plugin</artifactId>
 					<configuration>
-						<source>1.8</source>
-						<target>1.8</target>
+						<source>11</source>
+						<target>11</target>
 					</configuration>
 				</plugin>
 				<plugin>
@@ -99,23 +99,38 @@
 						<extraRequirements>
 							<requirement>
 								<type>p2-installable-unit</type>
+								<id>org.eclipse.wst.server.core</id>
+								<versionRange>[1.11.0.v202311141839,1.11.0.v202311141839]</versionRange>
+							</requirement>
+							<requirement>
+								<type>p2-installable-unit</type>
+								<id>org.eclipse.jetty.servlet-api</id>
+								<versionRange>[4.0.6,4.0.6]</versionRange>
+							</requirement>
+							<requirement>
+								<type>p2-installable-unit</type>
+								<id>org.mortbay.jasper.apache-jsp</id>
+								<versionRange>[9.0.90,9.0.90]</versionRange>
+							</requirement>
+							<requirement>
+								<type>p2-installable-unit</type>
 								<id>com.ibm.ws.ast.st.v85.core</id>
-								<versionRange>[1.0.401.v20260519_1347,1.0.401.v20260519_1347]</versionRange>
+								<versionRange>[1.0.401.v20240731_1210,1.0.401.v20240731_1210]</versionRange>
 							</requirement>
 							<requirement>
 								<type>p2-installable-unit</type>
 								<id>com.ibm.ws.ast.st.core</id>
-								<versionRange>[7.2.101.v20260519_1347,7.2.101.v20260519_1347]</versionRange>
+								<versionRange>[7.2.101.v20240731_1210,7.2.101.v20240731_1210]</versionRange>
 							</requirement>
 							<requirement>
 								<type>p2-installable-unit</type>
 								<id>com.ibm.websphere.v85.core</id>
-								<versionRange>[1.0.200.v20260519_1347,1.0.200.v20260519_1347]</versionRange>
+								<versionRange>[1.0.200.v20240731_1210,1.0.200.v20240731_1210]</versionRange>
 							</requirement>
 							<requirement>
 								<type>p2-installable-unit</type>
 								<id>com.ibm.websphere.v9.core</id>
-								<versionRange>[1.100.1.v20260519_1347,1.100.1.v20260519_1347]</versionRange>
+								<versionRange>[1.100.1.v20240731_1210,1.100.1.v20240731_1210]</versionRange>
 							</requirement>
 							<requirement>
 								<type>p2-installable-unit</type>
@@ -126,26 +141,6 @@
 								<type>p2-installable-unit</type>
 								<id>org.jboss.tools.foundation.core</id>
 								<versionRange>[1.5.2.Final-v20190328-1451-B3608,1.5.2.Final-v20190328-1451-B3608]</versionRange>
-							</requirement>
-							<requirement>
-								<type>p2-installable-unit</type>
-								<id>org.eclipse.ecf</id>
-								<versionRange>[3.9.3.v20181012-2016,3.9.3.v20181012-2016]</versionRange>
-							</requirement>
-							<requirement>
-								<type>p2-installable-unit</type>
-								<id>org.apache.commons.logging</id>
-								<versionRange>[1.2.0.v20180409-1502,1.2.0.v20180409-1502]</versionRange>
-							</requirement>
-							<requirement>
-								<type>p2-installable-unit</type>
-								<id>org.apache.ant</id>
-								<versionRange>[1.10.5.v20180808-0324,1.10.5.v20180808-0324]</versionRange>
-							</requirement>
-							<requirement>
-								<type>p2-installable-unit</type>
-								<id>org.eclipse.pde.core</id>
-								<versionRange>[3.12.300.v20190214-2042,3.12.300.v20190214-2042]</versionRange>
 							</requirement>
 							<requirement>
 								<type>p2-installable-unit</type>
