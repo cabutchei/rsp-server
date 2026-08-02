@@ -14,5 +14,6 @@ Require-Bundle: com.github.cabutchei.rsp.server,
  com.github.cabutchei.rsp.jdt.eclipse,
  com.github.cabutchei.rsp.launching.java,
  org.jboss.ide.eclipse.as.core,
+ org.eclipse.core.runtime,
  org.junit,
  org.mockito
