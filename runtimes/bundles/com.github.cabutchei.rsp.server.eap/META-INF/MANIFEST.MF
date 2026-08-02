@@ -2,10 +2,10 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: RSP-WTP EAP Runtime
 Bundle-SymbolicName: com.github.cabutchei.rsp.server.eap;singleton:=true
-Bundle-Activator: com.github.cabutchei.rsp.server.eap.impl.Activator
 Automatic-Module-Name: com.github.cabutchei.rsp.server.eap
-Bundle-Version: 0.7.0.Final
+Bundle-Version: 1.0.0.Final
 Bundle-RequiredExecutionEnvironment: JavaSE-11
+Service-Component: OSGI-INF/eap-wst-server-contribution.xml
 Import-Package: com.github.cabutchei.rsp.api,
  com.github.cabutchei.rsp.api.dao,
  com.github.cabutchei.rsp.api.dao.util,
@@ -14,6 +14,7 @@ Import-Package: com.github.cabutchei.rsp.api,
  com.github.cabutchei.rsp.eclipse.debug.core.model,
  com.github.cabutchei.rsp.eclipse.jdt,
  com.github.cabutchei.rsp.eclipse.jdt.adapter,
+ com.github.cabutchei.rsp.eclipse.jdt.launching,
  com.github.cabutchei.rsp.eclipse.jdt.service,
  com.github.cabutchei.rsp.eclipse.wst.api,
  com.github.cabutchei.rsp.eclipse.wst.adapter,
@@ -24,6 +25,7 @@ Import-Package: com.github.cabutchei.rsp.api,
  com.github.cabutchei.rsp.launching.java,
  com.github.cabutchei.rsp.launching.utils,
  com.github.cabutchei.rsp.server,
+ com.github.cabutchei.rsp.server.generic.jee,
  com.github.cabutchei.rsp.server.model,
  com.github.cabutchei.rsp.server.spi,
  com.github.cabutchei.rsp.server.spi.model,
@@ -45,6 +47,8 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.jdt.core,
  org.eclipse.jdt.launching,
  org.jboss.ide.eclipse.as.core
-Export-Package: com.github.cabutchei.rsp.server.eap.beans,
+Export-Package: com.github.cabutchei.rsp.server.eap.adapter;x-friends:="com.github.cabutchei.rsp.server.eap.test",
+ com.github.cabutchei.rsp.server.eap.beans,
  com.github.cabutchei.rsp.server.eap.impl,
- com.github.cabutchei.rsp.server.eap.servertype
+ com.github.cabutchei.rsp.server.eap.servertype,
+ com.github.cabutchei.rsp.server.eap.servertype.actions

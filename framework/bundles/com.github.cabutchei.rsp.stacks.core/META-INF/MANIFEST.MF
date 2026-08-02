@@ -3,9 +3,9 @@ Bundle-ManifestVersion: 2
 Bundle-Name: %BundleName
 Bundle-Vendor: %BundleVendor
 Bundle-SymbolicName: com.github.cabutchei.rsp.stacks.core
-Bundle-Version: 0.7.0.Final
+Bundle-Version: 1.0.0.Final
 Bundle-Activator: com.github.cabutchei.rsp.stacks.core.StacksCoreActivator
-Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Bundle-RequiredExecutionEnvironment: JavaSE-11
 Bundle-ActivationPolicy: lazy
 Bundle-ClassPath: .,
  lib/httpclient-4.0.1.jar,

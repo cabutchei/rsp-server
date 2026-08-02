@@ -3,8 +3,8 @@ Bundle-ManifestVersion: 2
 Bundle-Name: org.jboss.tools.rsp.server.wildfly.test
 Bundle-SymbolicName: org.jboss.tools.rsp.server.wildfly.test
 Automatic-Module-Name: org.jboss.tools.rsp.server.wildfly.test
-Bundle-Version: 0.7.0.Final
-Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Bundle-Version: 1.0.0.Final
+Bundle-RequiredExecutionEnvironment: JavaSE-11
 Import-Package: org.assertj.core.api,
  org.eclipse.lsp4j.jsonrpc,
  org.eclipse.lsp4j.jsonrpc.json,
@@ -29,6 +29,7 @@ Import-Package: org.assertj.core.api,
  com.github.cabutchei.rsp.server.discovery.serverbeans,
  com.github.cabutchei.rsp.server.generic.servertype.actions,
  com.github.cabutchei.rsp.server.model,
+ com.github.cabutchei.rsp.server.persistence,
  com.github.cabutchei.rsp.server.spi.discovery,
  com.github.cabutchei.rsp.server.spi.filewatcher,
  com.github.cabutchei.rsp.server.spi.launchers,
@@ -37,8 +38,10 @@ Import-Package: org.assertj.core.api,
  com.github.cabutchei.rsp.server.spi.publishing,
  com.github.cabutchei.rsp.server.spi.servertype,
  com.github.cabutchei.rsp.server.spi.util,
+ com.github.cabutchei.rsp.server.wildfly.servertype,
  org.osgi.framework
 Require-Bundle: com.github.cabutchei.rsp.server,
+ com.github.cabutchei.rsp.server.eap,
  com.github.cabutchei.rsp.server.wildfly,
  org.junit,
  org.mockito,

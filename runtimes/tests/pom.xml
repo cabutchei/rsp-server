@@ -8,14 +8,15 @@
   <parent>
     <groupId>com.github.cabutchei.rsp</groupId>
     <artifactId>runtimes</artifactId>
-    <version>0.7.0.Final</version>
+    <version>1.0.0.Final</version>
   </parent>
 
   <groupId>com.github.cabutchei.rsp.runtimes</groupId>
   <artifactId>tests</artifactId>
   <packaging>pom</packaging>
 
-  <modules>
-    <module>org.jboss.tools.rsp.server.wildfly.test</module>
-  </modules>
-</project>
+	<modules>
+	    <module>com.github.cabutchei.rsp.server.wst.test</module>
+	    <module>com.github.cabutchei.rsp.server.eap.test</module>
+	  </modules>
+	</project>
