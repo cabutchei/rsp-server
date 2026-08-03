@@ -160,7 +160,7 @@
     <location includeAllPlatforms="false" includeMode="planner" includeSource="false"
       type="InstallableUnit">
       <repository
-        location="file:/Users/cabutchei/.m2/repository/p2-mirrors/wdt-update-site_24.1.v20240731_1210/" />
+        location="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/wasdev/updates/wdt/2025-03/" />
 
       <unit id="com.ibm.ws.st.liberty.tools.base.feature.group" version="0.0.0" />
       <unit id="com.ibm.ws.st.was.tools.common.core.feature.group" version="0.0.0" />
