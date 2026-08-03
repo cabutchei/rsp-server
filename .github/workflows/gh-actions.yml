@@ -55,10 +55,8 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: maven
-      - name: Build distribution
-        run: |
-          mvn -pl targetplatform -am install -DskipTests -B
-          mvn -pl distribution/distribution -am clean package -DskipTests -B
+      - name: Build, test, and package distribution
+        run: mvn clean verify -B
       - name: Compute release metadata
         id: meta
         run: |
